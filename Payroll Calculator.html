@@ -117,6 +117,28 @@
 
 </div></div>
 
+<div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📋 请假审批 (Leave Approval)</h3><span class="arrow">▶</span></div>
+<div class="card-bd">
+  <div class="row">
+    <div class="fld"><label>员工</label><input id="leaveEmpName" readonly style="background:#f0f0f0;" placeholder="请先在员工资料填写姓名"></div>
+    <div class="fld"><label>请假类型</label>
+      <select id="leaveType" style="font-size:15px;padding:9px 12px;">
+        <option value="annual">📅 年假 (Annual Leave)</option>
+        <option value="unpaid">🚫 无薪假 (Unpaid Leave)</option>
+        <option value="medical">🏥 病假 (Medical)</option>
+        <option value="other">📌 其他</option>
+      </select>
+    </div>
+  </div>
+  <div class="row">
+    <div class="fld"><label>请假天数</label><input id="leaveDays" type="number" min="0.5" step="0.5" value="0"></div>
+    <div class="fld"><label>或选择日期</label><input id="leaveDates" type="text" placeholder="多选日期..." readonly style="background:#fff;"></div>
+  </div>
+  <div class="row" style="gap:6px;">
+    <button class="btn btn-primary" onclick="submitLeave()" style="font-size:13px;">✅ 提交请假</button>
+    <span id="leaveResult" style="font-size:12px;color:#555;padding:6px 0;">请填写资料后提交</span>
+  </div>
+</div></div>
 
 <div class="row"><div class="fld"><label data-i18n="al_balance">带薪年假 (Annual Leave)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" readonly style="cursor:not-allowed;background:#f0f0f0;font-weight:bold;"></div>
 <div class="fld"><label data-i18n="al_used">本月已用年假 (Annual Leave Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onAlUsedChange()"></div>
@@ -873,6 +895,20 @@ document.addEventListener('DOMContentLoaded',function(){window.addEventListener(
 
   fpUnpaid=flatpickr('#calUnpaid',{mode:'multiple',dateFormat:'Y-m-d',onChange:function(sd){var c=sd.length;document.getElementById('unpaidCount').textContent=c;document.getElementById('unpaidDays').value=c;document.getElementById('calBadge').textContent=c+' 天无薪假';onInputChange()}});
 
+  // Leave approval date picker
+  var fpLeave = flatpickr('#leaveDates',{mode:'multiple',dateFormat:'Y-m-d',onChange:function(sd){
+    document.getElementById('leaveDays').value=sd.length;
+  }});
+
+  // Auto-fill employee name in leave form
+  var leaveEmpEl=document.getElementById('leaveEmpName');
+  if(leaveEmpEl){
+    document.getElementById('empName').addEventListener('input',function(){
+      leaveEmpEl.value=this.value;
+    });
+    if(document.getElementById('empName').value)leaveEmpEl.value=document.getElementById('empName').value;
+  }
+
   // Restore from employee DB first, fall back to PRC_State
   var db = getEmpDB();
   if (db.list.length > 0) {
@@ -1156,6 +1192,103 @@ function updateALDisplay() {
   saveALData(name, alData);
   // Also trigger join date calc
   if (document.getElementById('empJoinDate').value) onJoinDateChange();
+}
+
+// === Leave Approval State Machine (Employment Act 1955 Section 60E Compliant) ===
+function submitLeave() {
+  var resultEl = document.getElementById('leaveResult');
+  var name = document.getElementById('leaveEmpName').value.trim();
+  var type = document.getElementById('leaveType').value;
+  var days = parseFloat(document.getElementById('leaveDays').value) || 0;
+
+  if (!name) { resultEl.innerHTML = '⚠️ 请先选择员工'; return; }
+  if (days <= 0) { resultEl.innerHTML = '⚠️ 请输入请假天数'; return; }
+
+  document.getElementById('empName').value = name;
+
+  if (type === 'annual') {
+    var alData = getALData(name);
+    var balance = parseFloat(document.getElementById('alBalance').value) || 0;
+    var entEl = document.getElementById('alEntitlement');
+    var entitlement = parseFloat(entEl ? entEl.value : '14') || 14;
+
+    if (days <= balance) {
+      var currentUsed = parseFloat(document.getElementById('alUsed').value) || 0;
+      document.getElementById('alUsed').value = (currentUsed + days).toFixed(1);
+      onAlUsedChange();
+      resultEl.innerHTML = '✅ <strong>年假充足</strong> — 已扣减 ' + days + ' 天年假<br>剩余年假: <strong>' +
+        (balance - days).toFixed(1) + '</strong> 天<br>💡 本次请假不扣薪资，无需填入无薪假日历。';
+    } else {
+      var currentUsed = parseFloat(document.getElementById('alUsed').value) || 0;
+      document.getElementById('alUsed').value = (currentUsed + balance).toFixed(1);
+      onAlUsedChange();
+      var overflowDays = days - balance;
+      resultEl.innerHTML = '⚠️ <strong>年假不足！</strong><br>年假余额: ' + balance.toFixed(1) + ' 天（已全部扣减）<br>溢出天数: <strong style="color:#d32f2f;">' + overflowDays.toFixed(1) + ' 天</strong><br>⏳ 正在自动转为无薪假...<br>';
+
+      var periodStart = null, periodEnd = null;
+      if (fpPeriod && fpPeriod.selectedDates.length === 2) {
+        periodStart = fpPeriod.selectedDates[0];
+        periodEnd = fpPeriod.selectedDates[1];
+      }
+
+      if (periodStart && periodEnd) {
+        var unpaidDates = fpUnpaid ? fpUnpaid.selectedDates.map(function(d) { return d; }) : [];
+        var currentDate = new Date(periodStart);
+        var addedCount = 0;
+        while (currentDate <= periodEnd && addedCount < overflowDays) {
+          var dow = currentDate.getDay();
+          if (dow !== 0) {
+            var mmdd = String(currentDate.getMonth() + 1).padStart(2, '0') + '.' + String(currentDate.getDate()).padStart(2, '0');
+            var isPH = false;
+            if (fpHoliday) {
+              for (var hi = 0; hi < fpHoliday.selectedDates.length; hi++) {
+                var hd = fpHoliday.selectedDates[hi];
+                var hmmdd = String(hd.getMonth() + 1).padStart(2, '0') + '.' + String(hd.getDate()).padStart(2, '0');
+                if (hmmdd === mmdd) { isPH = true; break; }
+              }
+            }
+            var alreadyAdded = false;
+            for (var ui = 0; ui < unpaidDates.length; ui++) {
+              if (unpaidDates[ui].getTime() === currentDate.getTime()) { alreadyAdded = true; break; }
+            }
+            if (!isPH && !alreadyAdded) {
+              unpaidDates.push(new Date(currentDate));
+              addedCount++;
+            }
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        if (addedCount > 0 && fpUnpaid) {
+          fpUnpaid.setDate(unpaidDates);
+          document.getElementById('unpaidCount').textContent = fpUnpaid.selectedDates.length;
+          document.getElementById('unpaidDays').value = fpUnpaid.selectedDates.length;
+          document.getElementById('calBadge').textContent = fpUnpaid.selectedDates.length + ' 天无薪假';
+          onInputChange();
+          resultEl.innerHTML += '✅ 已自动添加 <strong>' + addedCount + '</strong> 天无薪假至日历<br>💡 溢出部分将按' + (document.getElementById('orpRule').value === 'calendar' ? '实际周期天数' : '26天制') + '扣薪。';
+        } else {
+          resultEl.innerHTML += '⚠️ 无可用工作日可添加，请手动处理。';
+        }
+      } else {
+        var currentUnpaid = parseFloat(document.getElementById('unpaidDays').value) || 0;
+        document.getElementById('unpaidDays').value = (currentUnpaid + overflowDays).toFixed(1);
+        document.getElementById('unpaidCount').textContent = (currentUnpaid + overflowDays).toFixed(1);
+        document.getElementById('calBadge').textContent = (currentUnpaid + overflowDays).toFixed(1) + ' 天无薪假';
+        onInputChange();
+        resultEl.innerHTML += '✅ 已增加 <strong>' + overflowDays.toFixed(1) + '</strong> 天无薪假<br>💡 请手动在无薪假日历中选择具体日期。';
+      }
+    }
+  } else if (type === 'unpaid') {
+    var currentUnpaid = parseFloat(document.getElementById('unpaidDays').value) || 0;
+    document.getElementById('unpaidDays').value = (currentUnpaid + days).toFixed(1);
+    document.getElementById('unpaidCount').textContent = (currentUnpaid + days).toFixed(1);
+    document.getElementById('calBadge').textContent = (currentUnpaid + days).toFixed(1) + ' 天无薪假';
+    onInputChange();
+    resultEl.innerHTML = '✅ 已增加 <strong>' + days.toFixed(1) + '</strong> 天无薪假<br>请手动在无薪假日历中选择具体日期。';
+  } else {
+    resultEl.innerHTML = '📌 已记录 <strong>' + days.toFixed(1) + '</strong> 天 ' +
+      document.getElementById('leaveType').options[document.getElementById('leaveType').selectedIndex].text +
+      '<br>💡 此类假期不自动扣减薪资，请按公司政策处理。';
+  }
 }
 
 function onAlChange() {
