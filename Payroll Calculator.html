@@ -116,8 +116,9 @@
 </div></div>
 
 
-<div class="row"><div class="fld"><label data-i18n="al_balance">带薪年假 (Annual Leave)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div>
-<div class="fld"><label data-i18n="al_used">本月已用年假 (Annual Leave Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div></div>
+<div class="row"><div class="fld"><label data-i18n="al_balance">带薪年假 (Annual Leave)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" readonly style="cursor:not-allowed;background:#f0f0f0;font-weight:bold;"></div>
+<div class="fld"><label data-i18n="al_used">本月已用年假 (Annual Leave Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onAlUsedChange()"></div>
+<div class="fld"><label>每年配额 (Entitlement)</label><input id="alEntitlement" type="number" min="0" step="0.5" value="14" oninput="onAlChange()"></div></div>
 <div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📅 日期与考勤</h3><span class="badge" id="calBadge">0 天无薪假</span><span class="arrow open">▶</span></div>
 
 <div class="card-bd open"><div class="cal-row">
@@ -856,6 +857,7 @@ function onEmpSelect(val) {
   if (data) {
     restoreFormState(data);
     currentEmp = val;
+    updateALDisplay();
     onInputChange();
   }
 }
@@ -880,6 +882,7 @@ document.addEventListener('DOMContentLoaded',function(){window.addEventListener(
     restoreState();
   }
   refreshEmpSelector();
+  updateALDisplay();
   onInputChange();
 
 });
@@ -1112,6 +1115,64 @@ function onOtHoursChange() {
   document.getElementById('otMinutes').value = mins;
   var otEl = document.getElementById('otDisplay');
   if (otEl) otEl.textContent = 'OT: ' + Math.floor(mins / 60) + 'h' + (mins % 60 > 0 ? mins % 60 + 'min' : '');
+  onInputChange();
+}
+
+// Annual Leave management: entitlement, monthly tracking, balance
+var AL_YEAR = new Date().getFullYear();
+
+function getALData(empName) {
+  if (!empName) return null;
+  var db = getEmpDB();
+  var key = 'AL_' + empName.toUpperCase().replace(/\s/g, '') + '_' + AL_YEAR;
+  try {
+    var raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  // Default: create new record
+  var d = { entitlement: 14, used: 0, balance: 14, months: [0,0,0,0,0,0,0,0,0,0,0,0], year: AL_YEAR };
+  localStorage.setItem(key, JSON.stringify(d));
+  return d;
+}
+
+function saveALData(empName, data) {
+  if (!empName) return;
+  var key = 'AL_' + empName.toUpperCase().replace(/\s/g, '') + '_' + AL_YEAR;
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+function updateALDisplay() {
+  var name = document.getElementById('empName').value.trim();
+  if (!name) return;
+  var alData = getALData(name);
+  var entEl = document.getElementById('alEntitlement');
+  var balEl = document.getElementById('alBalance');
+  if (entEl && !entEl.disabled) alData.entitlement = parseFloat(entEl.value) || 14;
+  alData.balance = Math.max(0, alData.entitlement - alData.used);
+  if (balEl) balEl.value = alData.balance.toFixed(1);
+  saveALData(name, alData);
+}
+
+function onAlChange() {
+  updateALDisplay();
+  onInputChange();
+}
+
+function onAlUsedChange() {
+  var name = document.getElementById('empName').value.trim();
+  if (!name) return;
+  var alData = getALData(name);
+  var used = parseFloat(document.getElementById('alUsed').value) || 0;
+  var currentMonth = new Date().getMonth(); // 0-11
+  
+  // Calculate total used across all months
+  alData.months[currentMonth] = used;
+  alData.used = alData.months.reduce(function(a, b) { return a + b; }, 0);
+  alData.entitlement = parseFloat(document.getElementById('alEntitlement').value) || 14;
+  alData.balance = Math.max(0, alData.entitlement - alData.used);
+  
+  document.getElementById('alBalance').value = alData.balance.toFixed(1);
+  saveALData(name, alData);
   onInputChange();
 }
 
