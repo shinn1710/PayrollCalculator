@@ -138,7 +138,10 @@
 
 <div class="btn-group" style="margin-top:14px;border-top:none;padding-top:0;">
 <div class="attendance-import-row" style="display:flex;align-items:center;gap:8px;margin-top:4px;padding:2px 0;">
-  <button class="btn btn-outline" style="color:#4CAF50;font-weight:bold;font-size:11px;padding:3px 8px;" onclick="importAttendance()">📅 导入打卡记录</button>
+  <div class="file-input-wrapper">
+    <button class="btn btn-outline" style="color:#4CAF50;font-weight:bold;font-size:11px;padding:3px 8px;">📅 导入打卡记录 (XLS)</button>
+    <input type="file" accept=".xls,.xlsx" onchange="importAttendanceXLS(this)">
+  </div>
   <span id="otDisplay" style="display:inline-block;font-size:11px;color:#666;"></span>
 <input id="otMinutes" type="hidden" value="0">
 </div>
@@ -547,7 +550,8 @@ function applyLang(){
 
 
 
-var ATTENDANCE_DATA = [{"n":"CHOONGMENGCHUN","lack":4,"daily":[{"d":"05.02","i":"08:24","o":"18:03*"},{"d":"05.18","i":"07:42","o":"19:01*"},{"d":"05.19","i":"08:48*","o":"17:34"},{"d":"05.04","i":"08:47*","o":"17:40"},{"d":"05.05","i":"08:43*","o":"18:16*"},{"d":"05.21","i":"08:29","o":"18:31*"},{"d":"05.07","i":"08:38*","o":"18:48*"},{"d":"05.23","i":"08:45*","o":"17:26*"},{"d":"05.08","i":"08:46*","o":"18:05*"},{"d":"05.09","i":"08:48*","o":"18:52*"},{"d":"05.25","i":"07:50","o":"18:07*"},{"d":"05.26","i":"07:46","o":"17:54"},{"d":"05.11","i":"08:47*","o":"18:28*"},{"d":"05.27","i":"08:53*","o":"17:48"},{"d":"05.12","i":"08:54*","o":"19:05*"},{"d":"05.28","i":"08:59*","o":"18:58*"},{"d":"05.13","i":"08:50*","o":"18:45*"},{"d":"05.29","i":"08:57*","o":"20:28*"},{"d":"05.14","i":"08:58*","o":"17:59"},{"d":"05.30","i":"08:52*","o":"18:16*"},{"d":"05.15","i":"08:59*","o":"17:49"},{"d":"05.16","i":"07:57","o":"18:04*"}]},{"n":"LEEKEANFEI","lack":5,"daily":[{"d":"05.02","i":"","o":"18:03*"},{"d":"05.18","i":"","o":"19:01*"},{"d":"05.19","i":"","o":"17:34"},{"d":"05.20","i":"","o":"18:18*"},{"d":"05.05","i":"","o":"18:13*"},{"d":"05.21","i":"","o":"18:29*"},{"d":"05.06","i":"","o":"18:21*"},{"d":"05.22","i":"","o":"19:07*"},{"d":"05.23","i":"","o":"17:26*"},{"d":"05.08","i":"","o":"18:07*"},{"d":"05.09","i":"","o":"18:52*"},{"d":"05.26","i":"","o":"17:41"},{"d":"05.11","i":"","o":"18:24*"},{"d":"05.27","i":"","o":"17:46"},{"d":"05.12","i":"","o":"19:03*"},{"d":"05.28","i":"","o":"18:57*"},{"d":"05.13","i":"","o":"18:46*"},{"d":"05.14","i":"","o":"18:00"},{"d":"05.30","i":"","o":"18:15*"},{"d":"05.15","i":"","o":"17:42"},{"d":"05.16","i":"","o":"18:02*"}]},{"n":"ENGAIKHOW","lack":3,"daily":[{"d":"05.02","i":"08:51*","o":"18:04*"},{"d":"05.18","i":"08:34*","o":"19:02*"},{"d":"05.19","i":"08:42*","o":"17:34"},{"d":"05.20","i":"08:54*","o":"18:19*"},{"d":"05.05","i":"08:42*","o":"18:17*"},{"d":"05.21","i":"08:56*","o":"18:31*"},{"d":"05.06","i":"08:57*","o":"18:23*"},{"d":"05.22","i":"","o":"19:10*"},{"d":"05.07","i":"","o":"18:50*"},{"d":"05.08","i":"08:50*","o":"18:09*"},{"d":"05.09","i":"08:56*","o":"18:52*"},{"d":"05.25","i":"","o":"18:07*"},{"d":"05.26","i":"08:37*","o":"17:42"},{"d":"05.11","i":"08:58*","o":"18:25*"},{"d":"05.27","i":"08:57*","o":"17:49"},{"d":"05.28","i":"","o":"18:58*"},{"d":"05.13","i":"09:02*","o":"18:46*"},{"d":"05.29","i":"09:04*","o":"20:27*"},{"d":"05.14","i":"","o":"18:00"},{"d":"05.30","i":"09:08*","o":"18:15*"},{"d":"05.15","i":"08:59*","o":"17:51"},{"d":"05.16","i":"","o":"18:04*"}]},{"n":"TANWAHSENG","lack":26,"daily":[]}];
+// ATTENDANCE_DATA removed — now loaded from XLS files via importAttendanceXLS()
+
 var MalaysiaPayrollCore = (function() {
 
   // ========== SOCSO 2026 级距表 (含SKBBK非工伤险) ==========
@@ -864,48 +868,165 @@ function toggleCard(h){var b=h.parentElement.querySelector('.card-bd'),a=h.query
 
 
 
-function importAttendance(){
-  var name=document.getElementById('empName').value.trim().toUpperCase().replace(/\s/g,'');
-  if(!name){alert(t('alert_sel_emp'));return;}
-  var matched=null;
-  for(var i=0;i<ATTENDANCE_DATA.length;i++){
-    if(ATTENDANCE_DATA[i].n.replace(/\s/g,'')===name){matched=ATTENDANCE_DATA[i];break;}
-  }
-  if(!matched){
-    for(var i=0;i<ATTENDANCE_DATA.length;i++){
-      var dn=ATTENDANCE_DATA[i].n.replace(/\s/g,'');
-      if(name.indexOf(dn)>=0||dn.indexOf(name)>=0){matched=ATTENDANCE_DATA[i];break;}
+function importAttendanceXLS(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var empName = document.getElementById('empName').value.trim().toUpperCase().replace(/\s/g, '');
+      if (!empName) { alert('请先填写员工姓名 Employee Name！'); return; }
+
+      // Parse XML Spreadsheet 2003
+      var xmlText = e.target.result;
+      var parser = new DOMParser();
+      var xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+
+      // Get all rows
+      var rows = xmlDoc.getElementsByTagName('Row');
+      var records = [];
+
+      // Parse Section 2: detailed daily records (ID, Name, Dept, Date, INs, OUTs, ...)
+      for (var i = 0; i < rows.length; i++) {
+        var cells = rows[i].getElementsByTagName('Cell');
+        var cellData = [];
+        for (var j = 0; j < cells.length; j++) {
+          var data = cells[j].getElementsByTagName('Data');
+          cellData.push(data.length > 0 ? data[0].textContent.trim() : '');
+        }
+        records.push(cellData);
+      }
+
+      // Find employee - scan for Name fields
+      var matchedEmp = null;
+      for (var i = 0; i < records.length; i++) {
+        for (var j = 0; j < records[i].length; j++) {
+          if (records[i][j].indexOf('Name:') >= 0) {
+            var xlsName = records[i][j].replace('Name:', '').trim().toUpperCase().replace(/\s/g, '');
+            if (xlsName === empName || empName.indexOf(xlsName) >= 0 || xlsName.indexOf(empName) >= 0) {
+              matchedEmp = { row: i, name: xlsName };
+              break;
+            }
+          }
+        }
+        if (matchedEmp) break;
+      }
+
+      if (!matchedEmp) {
+        alert('❌ 在 XLS 文件中找不到员工: ' + document.getElementById('empName').value.trim() +
+          '\n\n请确认 XLS 文件中有该员工的打卡记录。');
+        return;
+      }
+
+      // Find the detailed records section for this employee
+      // Section 2 format: ID | Name | Dept | Date | IN1 | OUT1 | IN2 | OUT2 | ... | LateMins | EarlyMins | WorkMins
+      var empRecords = [];
+      for (var i = 0; i < records.length; i++) {
+        if (records[i].length >= 4 && records[i][1] === matchedEmp.name && records[i][2]) {
+          empRecords.push(records[i]);
+        }
+      }
+
+      if (empRecords.length === 0) {
+        alert('⚠️ 找到员工但没有详细打卡记录。请确认 XLS 文件格式正确。');
+        return;
+      }
+
+      // Process attendance for OT calculation
+      var hd = fpHoliday ? fpHoliday.selectedDates : [];
+      var hs = {};
+      for (var hi = 0; hi < hd.length; hi++) {
+        var ds = hd[hi];
+        var dd = String(ds.getDate()).padStart(2, '0');
+        var dm = String(ds.getMonth() + 1).padStart(2, '0');
+        hs[dm + '.' + dd] = true;
+      }
+
+      var otMin = 0;
+      var daysWithData = 0;
+
+      for (var ri = 0; ri < empRecords.length; ri++) {
+        var rec = empRecords[ri];
+        var dateStr = rec[3]; // "05.02" format
+        if (!dateStr) continue;
+
+        // Extract IN/OUT times - try standard positions
+        // Position 4 = IN1, Position 5 = OUT1 (or empty), Position 6 = OUT2
+        var timeIn = null, timeOut = null;
+
+        // Find the first IN time (not '-') and last OUT time
+        for (var ti = 4; ti < Math.min(rec.length, 12); ti++) {
+          var val = rec[ti];
+          if (val && val !== '-' && val.indexOf('T') >= 0) {
+            // ISO format: 1899-12-31T08:24:00.000
+            var timePart = val.split('T')[1] || '';
+            var hm = timePart.split(':');
+            if (hm.length >= 2) {
+              var mins = parseInt(hm[0]) * 60 + parseInt(hm[1]);
+              // Odd indices after position 4 are typically OUT times
+              if ((ti - 4) % 2 === 0) { // even offset = IN
+                timeIn = mins;
+              } else { // odd offset = OUT
+                timeOut = mins;
+              }
+            }
+          }
+        }
+
+        if (timeIn === null && timeOut === null) continue;
+        daysWithData++;
+
+        var late = false;
+        if (timeIn === null && timeOut !== null) { timeIn = 525; late = true; } // 08:45
+        else if (timeIn > 510) late = true; // later than 08:30
+
+        if (timeIn && timeOut && timeIn < timeOut) {
+          var total = timeOut - timeIn;
+          var lunch = total > 360 ? 60 : 0;
+          var work = total - lunch;
+          var isPH = hs[dateStr] || false;
+          var ot = 0;
+
+          if (isPH) {
+            ot = work; // All hours are OT on PH
+          } else if (late) {
+            if (work >= 540 && timeOut >= 1140) { ot = Math.max(0, timeOut - 1140); }
+          } else {
+            if (timeOut > 1110) { ot = timeOut - 1110; }
+          }
+          ot = Math.floor(ot / 30) * 30;
+          otMin += ot;
+        }
+      }
+
+      if (daysWithData === 0) {
+        alert('⚠️ 未找到可解析的打卡数据。请检查 XLS 文件是否来自打卡机。');
+        return;
+      }
+
+      document.getElementById('otMinutes').value = otMin;
+      var otEl = document.getElementById('otDisplay');
+      if (otEl) otEl.textContent = 'OT: ' + Math.floor(otMin / 60) + 'h' + (otMin % 60 > 0 ? otMin % 60 + 'min' : '');
+      onInputChange();
+
+      // Show OT pay based on Basic Salary
+      var basic = parseFloat(document.getElementById('basicSalary').value) || 0;
+      if (basic > 0) {
+        var hourlyRate = basic / 26 / 9;
+        var otPay = Math.round(otMin * hourlyRate * 1.5 * 100) / 100;
+        alert('✅ 成功导入 ' + matchedEmp.name + ' 的打卡记录！\n' +
+          '   OT 分钟: ' + otMin + 'min\n' +
+          '   OT 金额: RM ' + otPay.toFixed(2) + '\n' +
+          '   (基本薪资 RM ' + basic.toFixed(2) + ' ÷ 26 ÷ 9 × 1.5)');
+      } else {
+        alert('✅ 成功导入 ' + matchedEmp.name + ' 的打卡记录！\n   OT 分钟: ' + otMin + 'min\n   ⚠️ 请填写基本薪资以计算 OT 金额');
+      }
+    } catch (err) {
+      alert('❌ XLS 文件解析失败。请确认文件是打卡机导出的 XML Spreadsheet 格式。\n\n' + err.message);
     }
-  }
-  if(!matched){alert(t('alert_not_found')+': '+name);return;}
-  document.getElementById('unpaidDays').value=matched.lack;
-  document.getElementById('unpaidCount').textContent=matched.lack;
-  document.getElementById('calBadge').textContent=matched.lack+t('unpaid_tag');
-  var hd=fpHoliday?fpHoliday.selectedDates:[];var hs={};
-  for(var hi=0;hi<hd.length;hi++){var ds=hd[hi];var dd=String(ds.getDate()).padStart(2,'0');var dm=String(ds.getMonth()+1).padStart(2,'0');hs[dm+'.'+dd]=true;}
-  var otMin=0,semiDays=0;
-  for(var di=0;di<matched.daily.length;di++){
-    var dd=matched.daily[di];var im=0,om=0;
-    if(dd.i){var ip=dd.i.replace('*','').split(':');im=parseInt(ip[0])*60+parseInt(ip[1]);}
-    if(dd.o){var op=dd.o.replace('*','').split(':');om=parseInt(op[0])*60+parseInt(op[1]);}
-    var late=false;
-    if(!dd.i&&dd.o){im=525;late=true;}
-    else if(dd.i){if(im>510)late=true;}
-    if(im&&om&&im<om){
-      var tot=om-im;var lunch=tot>360?60:0;var work=tot-lunch;
-      if(work<420)semiDays++;
-      var isPH=hs[dd.d]||false;var ot=0;
-      if(isPH){ot=work;}
-      else if(late){if(work>=540&&om>=1140){ot=Math.max(0,om-1140);}}
-      else{if(om>1110){ot=om-1110;}}
-      ot=Math.floor(ot/30)*30;otMin+=ot;
-    }
-  }
-  document.getElementById('otMinutes').value=otMin;
-  var otEl=document.getElementById('otDisplay');
-  if(otEl)otEl.textContent='OT: '+Math.floor(otMin/60)+'h'+(otMin%60>0?otMin%60+'min':'');
-  onInputChange();
-  alert('✅ '+t('alert_imported')+': '+matched.n);
+  };
+  reader.readAsText(file);
 }
 
 function onInputChange(){
