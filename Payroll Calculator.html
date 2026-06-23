@@ -178,7 +178,8 @@
 
 <div class="breakdown"><span>EPF (11%): 雇员 <span class="num" id="bEpfEmp">RM 0.00</span> | 雇主 <span class="num" id="bEpfEmr">RM 0.00</span></span>
 
-<span>SOCSO: 雇员 <span class="num" id="bSocsoEmp">RM 0.00</span> | 雇主 <span class="num" id="bSocsoEmr">RM 0.00</span></span>
+<span>SOCSO(伤残险): 雇员 <span class="num" id="bSocsoInv">RM 0.00</span></span>
+<span>SKBBK(非工伤): 雇员 <span class="num" id="bSocsoSkbbk">RM 0.00</span> | 雇主 <span class="num" id="bSocsoEmr">RM 0.00</span></span>
 
 <span>SIP/EIS: 雇员 <span class="num" id="bSipEmp">RM 0.00</span> | 雇主 <span class="num" id="bSipEmr">RM 0.00</span></span>
 
@@ -549,8 +550,84 @@ function applyLang(){
 var ATTENDANCE_DATA = [{"n":"CHOONGMENGCHUN","lack":4,"daily":[{"d":"05.02","i":"08:24","o":"18:03*"},{"d":"05.18","i":"07:42","o":"19:01*"},{"d":"05.19","i":"08:48*","o":"17:34"},{"d":"05.04","i":"08:47*","o":"17:40"},{"d":"05.05","i":"08:43*","o":"18:16*"},{"d":"05.21","i":"08:29","o":"18:31*"},{"d":"05.07","i":"08:38*","o":"18:48*"},{"d":"05.23","i":"08:45*","o":"17:26*"},{"d":"05.08","i":"08:46*","o":"18:05*"},{"d":"05.09","i":"08:48*","o":"18:52*"},{"d":"05.25","i":"07:50","o":"18:07*"},{"d":"05.26","i":"07:46","o":"17:54"},{"d":"05.11","i":"08:47*","o":"18:28*"},{"d":"05.27","i":"08:53*","o":"17:48"},{"d":"05.12","i":"08:54*","o":"19:05*"},{"d":"05.28","i":"08:59*","o":"18:58*"},{"d":"05.13","i":"08:50*","o":"18:45*"},{"d":"05.29","i":"08:57*","o":"20:28*"},{"d":"05.14","i":"08:58*","o":"17:59"},{"d":"05.30","i":"08:52*","o":"18:16*"},{"d":"05.15","i":"08:59*","o":"17:49"},{"d":"05.16","i":"07:57","o":"18:04*"}]},{"n":"LEEKEANFEI","lack":5,"daily":[{"d":"05.02","i":"","o":"18:03*"},{"d":"05.18","i":"","o":"19:01*"},{"d":"05.19","i":"","o":"17:34"},{"d":"05.20","i":"","o":"18:18*"},{"d":"05.05","i":"","o":"18:13*"},{"d":"05.21","i":"","o":"18:29*"},{"d":"05.06","i":"","o":"18:21*"},{"d":"05.22","i":"","o":"19:07*"},{"d":"05.23","i":"","o":"17:26*"},{"d":"05.08","i":"","o":"18:07*"},{"d":"05.09","i":"","o":"18:52*"},{"d":"05.26","i":"","o":"17:41"},{"d":"05.11","i":"","o":"18:24*"},{"d":"05.27","i":"","o":"17:46"},{"d":"05.12","i":"","o":"19:03*"},{"d":"05.28","i":"","o":"18:57*"},{"d":"05.13","i":"","o":"18:46*"},{"d":"05.14","i":"","o":"18:00"},{"d":"05.30","i":"","o":"18:15*"},{"d":"05.15","i":"","o":"17:42"},{"d":"05.16","i":"","o":"18:02*"}]},{"n":"ENGAIKHOW","lack":3,"daily":[{"d":"05.02","i":"08:51*","o":"18:04*"},{"d":"05.18","i":"08:34*","o":"19:02*"},{"d":"05.19","i":"08:42*","o":"17:34"},{"d":"05.20","i":"08:54*","o":"18:19*"},{"d":"05.05","i":"08:42*","o":"18:17*"},{"d":"05.21","i":"08:56*","o":"18:31*"},{"d":"05.06","i":"08:57*","o":"18:23*"},{"d":"05.22","i":"","o":"19:10*"},{"d":"05.07","i":"","o":"18:50*"},{"d":"05.08","i":"08:50*","o":"18:09*"},{"d":"05.09","i":"08:56*","o":"18:52*"},{"d":"05.25","i":"","o":"18:07*"},{"d":"05.26","i":"08:37*","o":"17:42"},{"d":"05.11","i":"08:58*","o":"18:25*"},{"d":"05.27","i":"08:57*","o":"17:49"},{"d":"05.28","i":"","o":"18:58*"},{"d":"05.13","i":"09:02*","o":"18:46*"},{"d":"05.29","i":"09:04*","o":"20:27*"},{"d":"05.14","i":"","o":"18:00"},{"d":"05.30","i":"09:08*","o":"18:15*"},{"d":"05.15","i":"08:59*","o":"17:51"},{"d":"05.16","i":"","o":"18:04*"}]},{"n":"TANWAHSENG","lack":26,"daily":[]}];
 var MalaysiaPayrollCore = (function() {
 
-  // ========== SOCSO — 1.25% Employee, 1.75% Employer, cap RM 6,000 ==========
-  var SOCSO_CAP = 6000;
+  // ========== SOCSO 2026 级距表 (含SKBBK非工伤险) ==========
+  // 来源: PERKESO 官方 NewContributionRateIncludingSKBBK.pdf
+  // 第一附表 Category 1: Employment Injury + Invalidity + Non-Employment Injury
+  var SOCSO_TABLE = [
+    {min:1, max:30, er:0.40, inv:0.10, skbbk:0.20},
+    {min:31, max:50, er:0.70, inv:0.20, skbbk:0.30},
+    {min:51, max:70, er:1.10, inv:0.30, skbbk:0.50},
+    {min:71, max:100, er:1.50, inv:0.40, skbbk:0.65},
+    {min:101, max:140, er:2.10, inv:0.60, skbbk:0.90},
+    {min:141, max:200, er:2.95, inv:0.85, skbbk:1.25},
+    {min:201, max:300, er:4.35, inv:1.25, skbbk:1.85},
+    {min:301, max:400, er:6.15, inv:1.75, skbbk:2.65},
+    {min:401, max:500, er:7.85, inv:2.25, skbbk:3.35},
+    {min:501, max:600, er:9.65, inv:2.75, skbbk:4.15},
+    {min:601, max:700, er:11.35, inv:3.25, skbbk:4.85},
+    {min:701, max:800, er:13.15, inv:3.75, skbbk:5.65},
+    {min:801, max:900, er:14.85, inv:4.25, skbbk:6.35},
+    {min:901, max:1000, er:16.65, inv:4.75, skbbk:7.15},
+    {min:1001, max:1100, er:18.35, inv:5.25, skbbk:7.85},
+    {min:1101, max:1200, er:20.15, inv:5.75, skbbk:8.65},
+    {min:1201, max:1300, er:21.85, inv:6.25, skbbk:9.35},
+    {min:1301, max:1400, er:23.65, inv:6.75, skbbk:10.15},
+    {min:1401, max:1500, er:25.35, inv:7.25, skbbk:10.85},
+    {min:1501, max:1600, er:27.15, inv:7.75, skbbk:11.65},
+    {min:1601, max:1700, er:28.85, inv:8.25, skbbk:12.35},
+    {min:1701, max:1800, er:30.65, inv:8.75, skbbk:13.15},
+    {min:1801, max:1900, er:32.35, inv:9.25, skbbk:13.85},
+    {min:1901, max:2000, er:34.15, inv:9.75, skbbk:14.65},
+    {min:2001, max:2100, er:35.85, inv:10.25, skbbk:15.35},
+    {min:2101, max:2200, er:37.65, inv:10.75, skbbk:16.15},
+    {min:2201, max:2300, er:39.35, inv:11.25, skbbk:16.85},
+    {min:2301, max:2400, er:41.15, inv:11.75, skbbk:17.65},
+    {min:2401, max:2500, er:42.85, inv:12.25, skbbk:18.35},
+    {min:2501, max:2600, er:44.65, inv:12.75, skbbk:19.15},
+    {min:2601, max:2700, er:46.35, inv:13.25, skbbk:19.85},
+    {min:2701, max:2800, er:48.15, inv:13.75, skbbk:20.65},
+    {min:2801, max:2900, er:49.85, inv:14.25, skbbk:21.35},
+    {min:2901, max:3000, er:51.65, inv:14.75, skbbk:22.15},
+    {min:3001, max:3100, er:53.35, inv:15.25, skbbk:22.85},
+    {min:3101, max:3200, er:55.15, inv:15.75, skbbk:23.65},
+    {min:3201, max:3300, er:56.85, inv:16.25, skbbk:24.35},
+    {min:3301, max:3400, er:58.65, inv:16.75, skbbk:25.15},
+    {min:3401, max:3500, er:60.35, inv:17.25, skbbk:25.85},
+    {min:3501, max:3600, er:62.15, inv:17.75, skbbk:26.65},
+    {min:3601, max:3700, er:63.85, inv:18.25, skbbk:27.35},
+    {min:3701, max:3800, er:65.65, inv:18.75, skbbk:28.15},
+    {min:3801, max:3900, er:67.35, inv:19.25, skbbk:28.85},
+    {min:3901, max:4000, er:69.15, inv:19.75, skbbk:29.65},
+    {min:4001, max:4100, er:70.85, inv:20.25, skbbk:30.35},
+    {min:4101, max:4200, er:72.65, inv:20.75, skbbk:31.15},
+    {min:4201, max:4300, er:74.35, inv:21.25, skbbk:31.85},
+    {min:4301, max:4400, er:76.15, inv:21.75, skbbk:32.65},
+    {min:4401, max:4500, er:77.85, inv:22.25, skbbk:33.35},
+    {min:4501, max:4600, er:79.65, inv:22.75, skbbk:34.15},
+    {min:4601, max:4700, er:81.35, inv:23.25, skbbk:34.85},
+    {min:4701, max:4800, er:83.15, inv:23.75, skbbk:35.65},
+    {min:4801, max:4900, er:84.85, inv:24.25, skbbk:36.35},
+    {min:4901, max:5000, er:86.65, inv:24.75, skbbk:37.15},
+    {min:5001, max:5100, er:88.35, inv:25.25, skbbk:37.85},
+    {min:5101, max:5200, er:90.15, inv:25.75, skbbk:38.65},
+    {min:5201, max:5300, er:91.85, inv:26.25, skbbk:39.35},
+    {min:5301, max:5400, er:93.65, inv:26.75, skbbk:40.15},
+    {min:5401, max:5500, er:95.35, inv:27.25, skbbk:40.85},
+    {min:5501, max:5600, er:97.15, inv:27.75, skbbk:41.65},
+    {min:5601, max:5700, er:98.85, inv:28.25, skbbk:42.35},
+    {min:5701, max:5800, er:100.65, inv:28.75, skbbk:43.15},
+    {min:5801, max:5900, er:102.35, inv:29.25, skbbk:43.85},
+    {min:5901, max:6000, er:104.15, inv:29.75, skbbk:44.65}
+  ];
+
+  function lookupSOCSO(wage) {
+    if (wage <= 0) return {er: 0, inv: 0, skbbk: 0};
+    for (var i = 0; i < SOCSO_TABLE.length; i++) {
+      if (wage <= SOCSO_TABLE[i].max) return SOCSO_TABLE[i];
+    }
+    // Above RM 6,000 — use max bracket
+    return SOCSO_TABLE[SOCSO_TABLE.length - 1];
+  }
 
   // ========== SIP / EIS (Employment Insurance System) ==========
   var SIP_RATE = 0.002, SIP_CAP = 6000;
@@ -563,12 +640,12 @@ var MalaysiaPayrollCore = (function() {
 
         // EPF
         ee=Math.round((p.bossMode?b:g)*0.11*100)/100,
-        er=(p.bossMode?b:g)<=5000?Math.round((p.bossMode?b:g)*0.13*100)/100:Math.round((p.bossMode?b:g)*0.12*100)/100,
+        epfer=(p.bossMode?b:g)<=5000?Math.round((p.bossMode?b:g)*0.13*100)/100:Math.round((p.bossMode?b:g)*0.12*100)/100,
 
-        // SOCSO — 1.25% Employee, 1.75% Employer (cap RM 6,000)
-        sc=Math.min(p.bossMode?b:g,SOCSO_CAP),
-        semp=Math.round(sc*0.0125*100)/100,
-        ser2=Math.round(sc*0.0175*100)/100,
+        // SOCSO — 2026级距表 (含SKBBK)
+        soc=lookupSOCSO(p.bossMode?b:g),
+        socEmp=soc.inv + soc.skbbk,
+        socEr=soc.er,
 
         // SIP (EIS) — flat 0.2 %
         sb=Math.min(p.bossMode?b:g,SIP_CAP),
@@ -576,13 +653,14 @@ var MalaysiaPayrollCore = (function() {
         ser3=Math.round(sb*SIP_RATE*100)/100,
 
         // Net & employer cost
-        n=g-v-ee-semp-se,
-        ec=g+er+ser2+ser3;
+        n=g-v-ee-socEmp-se,
+        ec=g+epfer+socEr+ser3;
 
     return{basic:b,allowance:a,advance:v,unpaidDays:u,ORP:o,unpaidDeduction:ud,
            otMinutes:otm,otPay:otp,reimbursement:rmb,
-           gross:g,epfEmployee:ee,epfEmployer:er,
-           socsoEmployee:semp,socsoEmployer:ser2,
+           gross:g,epfEmployee:ee,epfEmployer:epfer,
+           socsoEmployee:socEmp,socsoEmployer:socEr,
+           socsoInvalidity:soc.inv,socsoSKBBK:soc.skbbk,
            sipEmployee:se,sipEmployer:ser3,net:n,employerCost:ec}
   }}
 
@@ -859,9 +937,10 @@ function onInputChange(){
 
   document.getElementById('bEpfEmr').textContent='RM '+r.epfEmployer.toFixed(2);
 
-  document.getElementById('bSocsoEmp').textContent='RM '+r.socsoEmployee.toFixed(2);
+  document.getElementById('bSocsoInv').textContent = 'RM ' + r.socsoInvalidity.toFixed(2);
 
-  document.getElementById('bSocsoEmr').textContent='RM '+r.socsoEmployer.toFixed(2);
+  document.getElementById('bSocsoSkbbk').textContent = 'RM ' + r.socsoSKBBK.toFixed(2);
+  document.getElementById('bSocsoEmr').textContent = 'RM ' + r.socsoEmployer.toFixed(2);
 
   document.getElementById('bSipEmp').textContent='RM '+r.sipEmployee.toFixed(2);
 
