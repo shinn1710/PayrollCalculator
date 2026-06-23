@@ -1126,6 +1126,13 @@ function onInputChange(){
     if(otEl){otEl.disabled=fw.checked;if(fw.checked)otEl.value=0;}
     var otD=document.getElementById('otDisplay');
     if(otD)otD.textContent=fw.checked?'OT: 无 (外劳模式)':'';
+    // Foreign worker: disable EPF/SOCSO fields, update IC placeholder
+    var epfEl=document.getElementById('empEpf');
+    var socsoEl=document.getElementById('empSocso');
+    var icEl=document.getElementById('empIc');
+    if(epfEl){epfEl.disabled=fw.checked;epfEl.placeholder=fw.checked?'无需EPF':'EPF No.';if(fw.checked)epfEl.value='';}
+    if(socsoEl){socsoEl.disabled=fw.checked;socsoEl.placeholder=fw.checked?'无需SOCSO':'SOCSO No.';if(fw.checked)socsoEl.value='';}
+    if(icEl){icEl.placeholder=fw.checked?'Passport No.':'XXXXXX-XX-XXXX';}
   }
 
   var basic=parseFloat(document.getElementById('basicSalary').value)||0;
