@@ -3,3 +3,7 @@ node_modules/
 thumbs.db
 *.log
 backup/
+*.xls
+*.xlsx
+*.json
+!Payroll Calculator.html
