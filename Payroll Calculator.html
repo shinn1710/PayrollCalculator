@@ -116,8 +116,8 @@
 </div></div>
 
 
-<div class="row"><div class="fld"><label data-i18n="al_balance">剩余年假 (AL Balance)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div>
-<div class="fld"><label data-i18n="al_used">本月已扣年假 (AL Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div></div>
+<div class="row"><div class="fld"><label data-i18n="al_balance">带薪年假 (Annual Leave)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div>
+<div class="fld"><label data-i18n="al_used">本月已用年假 (AL Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div></div>
 <div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📅 日期与考勤</h3><span class="badge" id="calBadge">0 天无薪假</span><span class="arrow open">▶</span></div>
 
 <div class="card-bd open"><div class="cal-row">
@@ -485,8 +485,8 @@ var LANG = {
     boss_mode:'\uD83D\uDC68\u200D\uD83D\uDCBB \u8001\u677F\u4EBA\u597D\u6A21\u5F0F',
     boss_sub:'(\u4EE5\u57FA\u672C\u85AA\u8D44\u00D7%\u8BA1\u7B97)',
     boss_tag:'\u5DF2\u542F\u7528',
-    al_balance:'\u5269\u4F59\u5E74\u5047 (AL Balance)',
-    al_used:'\u672C\u6708\u5DF2\u6263\u5E74\u5047 (AL Used)',
+    al_balance:'带薪年假 (Annual Leave)',
+    al_used:'本月已用年假 (AL Used)',
   },
   en:{
     app_title:'Payroll Calculation System',
@@ -517,7 +517,7 @@ var LANG = {
     boss_mode:'\uD83D\uDC68\u200D\uD83D\uDCBB Boss Mode',
     boss_sub:'(Basic Salary \u00D7 %)',
     boss_tag:'Active',
-    al_balance:'AL Balance',
+    al_balance:'带薪年假 (Annual Leave)',
     al_used:'AL Used (This Month)',
   }
 };
@@ -900,14 +900,20 @@ function importAttendanceXLS(input) {
 
       // Find employee - scan for Name fields
       var matchedEmp = null;
+      var periodYear = '2026';
       for (var i = 0; i < records.length; i++) {
         for (var j = 0; j < records[i].length; j++) {
-          if (records[i][j].indexOf('Name:') >= 0) {
-            var xlsName = records[i][j].replace('Name:', '').trim().toUpperCase().replace(/\s/g, '');
+          var cellText = records[i][j] || '';
+          if (cellText.indexOf('Name:') >= 0) {
+            var xlsName = cellText.replace('Name:', '').trim().toUpperCase().replace(/\s/g, '');
             if (xlsName === empName || empName.indexOf(xlsName) >= 0 || xlsName.indexOf(empName) >= 0) {
               matchedEmp = { row: i, name: xlsName };
-              break;
             }
+          }
+          // Extract year from Date field: "Date:26.05.01~26.05.31"
+          if (cellText.indexOf('Date:') >= 0) {
+            var yrMatch = cellText.match(/Date:(\d{2})\./);
+            if (yrMatch) periodYear = '20' + yrMatch[1];
           }
         }
         if (matchedEmp) break;
@@ -1008,6 +1014,52 @@ function importAttendanceXLS(input) {
       document.getElementById('otMinutes').value = otMin;
       var otEl = document.getElementById('otDisplay');
       if (otEl) otEl.textContent = 'OT: ' + Math.floor(otMin / 60) + 'h' + (otMin % 60 > 0 ? otMin % 60 + 'min' : '');
+
+      // === Auto-detect Unpaid Leave ===
+      // Days with no clock data + Mon-Fri + not public holiday = unpaid leave
+      var unpaidDates = [];
+      // Parse Section 1 calendar to get weekday info
+      for (var si = 0; si < records.length; si++) {
+        var sec1 = records[si];
+        // Section 1 rows have Date at col 0 and Weekday at col 1
+        // Pattern: ["05.01", "FRI", IN, OUT, IN, OUT, IN, OUT, "05.17", "SUN", ...]
+        if (sec1.length >= 16 && /^\d{2}\.\d{2}$/.test(sec1[0]) && /^(MON|TUE|WED|THU|FRI|SAT|SUN)$/i.test(sec1[1])) {
+          // First week (cols 0-7)
+          var date1 = sec1[0];
+          var wday1 = (sec1[1] || '').toUpperCase();
+          var hasData1 = sec1[2] || sec1[3] || sec1[4] || sec1[5] || sec1[6] || sec1[7];
+          // Second week (cols 8-15)
+          var date2 = sec1[8];
+          var wday2 = (sec1[9] || '').toUpperCase();
+          var hasData2 = sec1[10] || sec1[11] || sec1[12] || sec1[13] || sec1[14] || sec1[15];
+
+          // Check date 1
+          if (date1 && !hasData1 && wday1 !== 'SAT' && wday1 !== 'SUN' && !hs[date1]) {
+            // Convert MM.DD to YYYY-MM-DD format for flatpickr
+            var parts1 = date1.split('.');
+            // Use current year if period is set, otherwise auto-detect
+            var yr1 = periodYear || '2026';
+            unpaidDates.push(yr1 + '-' + parts1[0] + '-' + parts1[1]);
+          }
+          // Check date 2
+          if (date2 && !hasData2 && wday2 !== 'SAT' && wday2 !== 'SUN' && !hs[date2]) {
+            var parts2 = date2.split('.');
+            var yr2 = periodYear || '2026';
+            unpaidDates.push(yr2 + '-' + parts2[0] + '-' + parts2[1]);
+          }
+        }
+      }
+
+      // Deduplicate and sort
+      unpaidDates = unpaidDates.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort();
+
+      if (unpaidDates.length > 0 && fpUnpaid) {
+        fpUnpaid.setDate(unpaidDates);
+        document.getElementById('unpaidCount').textContent = unpaidDates.length;
+        document.getElementById('unpaidDays').value = unpaidDates.length;
+        document.getElementById('calBadge').textContent = unpaidDates.length + ' 天无薪假';
+      }
+
       onInputChange();
 
       // Show OT pay based on Basic Salary
@@ -1101,13 +1153,10 @@ function renderSimpleText(r){
     '</td></tr><tr><td>Less: EPF + SOCSO + SIP</td><td class="sp-num">' + td.toFixed(2) +
     '</td></tr><tr><td>Advance</td><td class=\"sp-num\">' + r.advance.toFixed(2) +
     '</td></tr><tr class="sp-netr"><td>NET PAY</td><td class="sp-num sp-netv">' + r.net.toFixed(2) +
-    '</td></tr></table><div class="sr"><span>AL Balance: ' + (document.getElementById('alBalance') ? document
-      .getElementById('alBalance').value : '0') + '</span><span style="margin-left:30px;">AL Used: ' + (document
-      .getElementById('alUsed') ? document.getElementById('alUsed').value : '0') +
-    '</span></div></div><div style="padding:6px 10px;font-size:12px;border-top:1px solid #eee;margin-top:4px;background:#f9fafb;"><span><strong>AL Balance:</strong> ' +
+    '</td></tr></table></div></div><div style="padding:8px 12px;font-size:12px;border-top:2px solid #000;margin-top:6px;background:#f5f5f5;"><strong>Annual Leave:</strong> ' +
     (document.getElementById('alBalance') ? document.getElementById('alBalance').value : '0') +
-    '</span><span style="margin-left:24px;"><strong>AL Used:</strong> ' + (document.getElementById('alUsed') ? document
-      .getElementById('alUsed').value : '0') + '</span></div></div></div>'
+    ' 天可用 &nbsp;|&nbsp; 本月已用 ' + (document.getElementById('alUsed') ? document
+      .getElementById('alUsed').value : '0') + ' 天</div></div></div>'
 }
 
 function renderFormalForm(r) {
