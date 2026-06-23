@@ -117,7 +117,7 @@
 
 
 <div class="row"><div class="fld"><label data-i18n="al_balance">带薪年假 (Annual Leave)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div>
-<div class="fld"><label data-i18n="al_used">本月已用年假 (AL Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div></div>
+<div class="fld"><label data-i18n="al_used">本月已用年假 (Annual Leave Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onInputChange()"></div></div>
 <div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📅 日期与考勤</h3><span class="badge" id="calBadge">0 天无薪假</span><span class="arrow open">▶</span></div>
 
 <div class="card-bd open"><div class="cal-row">
@@ -155,7 +155,11 @@
 
 <div class="row"><div class="fld"><label data-i18n="basic_salary">基础月薪 (Basic Salary, RM)</label><input id="basicSalary" type="number" min="0" step="0.01" value="3000" oninput="onInputChange()"></div>
 
-<div class="fld"><label data-i18n="allowance">固定津贴 (Reimbursement, RM)</label><input id="allowance" type="number" min="0" step="0.01" value="0" oninput="onInputChange()"></div></div>
+<div class="fld"><label data-i18n="allowance">固定津贴 (Allowance, RM)</label><input id="allowance" type="number" min="0" step="0.01" value="0" oninput="onInputChange()"></div></div>
+
+<div class="row"><div class="fld"><label>OT 加班时数 (Hours)</label><input id="otHours" type="number" min="0" step="0.5" value="0" oninput="onOtHoursChange()"></div>
+
+<div class="fld"><label>OT 每小时费率 (RM)</label><input id="otRate" type="text" value="RM 0.00" readonly style="background:#f0f0f0;font-weight:bold;color:#2b5797;"></div></div>
 
 <div class="row"><div class="fld"><label data-i18n="advance">预支扣款 (Advance, RM)</label><input id="advance" type="number" min="0" step="0.01" value="0" oninput="onInputChange()"></div>
 
@@ -470,7 +474,7 @@ var LANG = {
     emp_bank:'\u94F6\u884C (Bank)',
     emp_bank_acc:'\u94F6\u884C\u8D26\u53F7',
     basic_salary:'\u57FA\u7840\u6708\u85AA (Basic Salary, RM)',
-    allowance:'\u56FA\u5B9A\u6D25\u8D34 (Reimbursement, RM)',
+    allowance:'固定津贴 (Allowance, RM)',
     advance:'\u9884\u652F\u6263\u6B3E (Advance, RM)',
     unpaid_days:'\u65E0\u85AA\u5047\u6263\u6B3E\u5929\u6570',
     orp_rule:'\u65E0\u85AA\u5047\u8BA1\u7B97\u57FA\u6570\u89C4\u5219',
@@ -486,7 +490,7 @@ var LANG = {
     boss_sub:'(\u4EE5\u57FA\u672C\u85AA\u8D44\u00D7%\u8BA1\u7B97)',
     boss_tag:'\u5DF2\u542F\u7528',
     al_balance:'带薪年假 (Annual Leave)',
-    al_used:'本月已用年假 (AL Used)',
+    al_used:'本月已用年假 (Annual Leave Used)',
   },
   en:{
     app_title:'Payroll Calculation System',
@@ -517,8 +521,8 @@ var LANG = {
     boss_mode:'\uD83D\uDC68\u200D\uD83D\uDCBB Boss Mode',
     boss_sub:'(Basic Salary \u00D7 %)',
     boss_tag:'Active',
-    al_balance:'带薪年假 (Annual Leave)',
-    al_used:'AL Used (This Month)',
+    al_balance:'Annual Leave',
+    al_used:'Annual Leave Used',
   }
 };
 var curLang = localStorage.getItem('PRC_Lang') || 'zh';
@@ -1012,6 +1016,8 @@ function importAttendanceXLS(input) {
       }
 
       document.getElementById('otMinutes').value = otMin;
+      var otHoursField = document.getElementById('otHours');
+      if (otHoursField) otHoursField.value = (otMin / 60).toFixed(1);
       var otEl = document.getElementById('otDisplay');
       if (otEl) otEl.textContent = 'OT: ' + Math.floor(otMin / 60) + 'h' + (otMin % 60 > 0 ? otMin % 60 + 'min' : '');
 
@@ -1081,6 +1087,15 @@ function importAttendanceXLS(input) {
   reader.readAsText(file);
 }
 
+function onOtHoursChange() {
+  var hours = parseFloat(document.getElementById('otHours').value) || 0;
+  var mins = Math.round(hours * 60);
+  document.getElementById('otMinutes').value = mins;
+  var otEl = document.getElementById('otDisplay');
+  if (otEl) otEl.textContent = 'OT: ' + Math.floor(mins / 60) + 'h' + (mins % 60 > 0 ? mins % 60 + 'min' : '');
+  onInputChange();
+}
+
 function onInputChange(){
   var bm=document.getElementById('chk_bossMode');
   if(bm){document.getElementById('bossModeTag').style.display=bm.checked?'inline-block':'none';}
@@ -1119,6 +1134,18 @@ function onInputChange(){
 
   document.getElementById('bSipEmr').textContent='RM '+r.sipEmployer.toFixed(2);
 
+  // OT hourly rate display
+  var basicRate = parseFloat(document.getElementById('basicSalary').value) || 0;
+  var otRateEl = document.getElementById('otRate');
+  if (otRateEl) {
+    if (basicRate > 0) {
+      var hrRate = basicRate / 26 / 9;
+      otRateEl.value = 'RM ' + (hrRate * 1.5).toFixed(2) + ' /小时';
+    } else {
+      otRateEl.value = '请先填基本薪资';
+    }
+  }
+
   renderSimpleText(r);renderFormalForm(r);saveState();
 
 }
@@ -1148,7 +1175,7 @@ function renderSimpleText(r){
     '</td></tr><tr class="sp-tot"><td>Total</td><td>' + r.epfEmployer.toFixed(2) + '</td><td>' + td.toFixed(2) +
     '</td><td>' + (r.epfEmployer + r.socsoEmployer + r.sipEmployer + td).toFixed(2) +
     '</td></tr></table></div><div class="sp-right"><table class="sp-cal"><tr><td>Basic Salary</td><td class="sp-num">' + r
-    .basic.toFixed(2) + '</td></tr><tr><td>Reimbursement (Allowance+OT)</td><td class="sp-num">' + (r.reimbursement
+    .basic.toFixed(2) + '</td></tr><tr><td>Allowance + OT</td><td class="sp-num">' + (r.reimbursement
       .toFixed(2)) + '</td></tr><tr><td>Less: Unpaid Leave</td><td class="sp-num">' + (r.unpaidDeduction.toFixed(2)) +
     '</td></tr><tr><td>Less: EPF + SOCSO + SIP</td><td class="sp-num">' + td.toFixed(2) +
     '</td></tr><tr><td>Advance</td><td class=\"sp-num\">' + r.advance.toFixed(2) +
@@ -1194,7 +1221,7 @@ function renderFormalForm(r) {
     '<tr><td><strong>To:</strong></td><td>' + (pv.split(' to ')[1] || pv) + '</td></tr></table></div></div>' +
     '<div class="fp-sec">Earnings</div><table class="fp-tbl">' +
     '<tr><td>Basic Salary (RM)</td><td class="fp-amt">' + r.basic.toFixed(2) + '</td></tr>' +
-    ('<tr><td>Reimbursement (Allowance+OT)</td><td class="fp-amt">' + r.reimbursement.toFixed(2) + '</td></tr>') +
+    ('<tr><td>Allowance + OT</td><td class="fp-amt">' + r.reimbursement.toFixed(2) + '</td></tr>') +
     ('<tr><td>Less: Unpaid Leave</td><td class="fp-amt">-' + r.unpaidDeduction.toFixed(2) + '</td></tr>') +
     '<tr class="fp-gross"><td>Gross Salary</td><td class="fp-amt">' + r.gross.toFixed(2) + '</td></tr></table>' +
     '<div class="fp-sec">Deductions</div><table class="fp-tbl">' +
