@@ -1034,7 +1034,7 @@ function importAttendanceXLS(input) {
           var hasData2 = sec1[10] || sec1[11] || sec1[12] || sec1[13] || sec1[14] || sec1[15];
 
           // Check date 1
-          if (date1 && !hasData1 && wday1 !== 'SAT' && wday1 !== 'SUN' && !hs[date1]) {
+          if (date1 && !hasData1 && wday1 !== 'SUN' && !hs[date1]) {
             // Convert MM.DD to YYYY-MM-DD format for flatpickr
             var parts1 = date1.split('.');
             // Use current year if period is set, otherwise auto-detect
@@ -1042,7 +1042,7 @@ function importAttendanceXLS(input) {
             unpaidDates.push(yr1 + '-' + parts1[0] + '-' + parts1[1]);
           }
           // Check date 2
-          if (date2 && !hasData2 && wday2 !== 'SAT' && wday2 !== 'SUN' && !hs[date2]) {
+          if (date2 && !hasData2 && wday2 !== 'SUN' && !hs[date2]) {
             var parts2 = date2.split('.');
             var yr2 = periodYear || '2026';
             unpaidDates.push(yr2 + '-' + parts2[0] + '-' + parts2[1]);
