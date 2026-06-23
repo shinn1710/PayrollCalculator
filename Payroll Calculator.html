@@ -205,6 +205,17 @@
     <span style="font-weight:400;font-size:10px;color:#a16207;">(EPF/SOCSO/SIP 以基本薪资×%计算)</span>
   </label>
 </div>
+<div id="fwPanel" style="display:flex;align-items:center;gap:10px;margin:4px 0 6px;padding:8px 12px;background:rgba(59,130,246,0.08);border-radius:8px;border:1px solid rgba(59,130,246,0.3);">
+  <label class="switch-label" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex-wrap:wrap;">
+    <span class="switch" style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;">
+      <input type="checkbox" id="chk_fwMode" onchange="onInputChange()" style="opacity:0;width:0;height:0;">
+      <span class="slider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:20px;transition:.3s;"></span>
+      <span class="slider-knob" style="position:absolute;content:'';height:16px;width:16px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s;"></span>
+    </span>
+    <span style="font-size:13px;font-weight:700;color:#1e40af;">🌏 外劳模式</span>
+    <span id="fwModeTag" style="display:none;font-size:10px;padding:1px 8px;border-radius:10px;background:#3b82f6;color:#fff;font-weight:700;">无需EPF/SOCSO/SIP/OT</span>
+  </label>
+</div>
 
 <div class="btn-group">
 
@@ -645,31 +656,39 @@ var MalaysiaPayrollCore = (function() {
         u=Number(p.unpaidLeaveDays)||0,
         d=p.orpRule==='calendar'?(Number(p.periodDays)||26):26,
         o=b/d,ud=u*o,otm=Number(p.otMinutes)||0,otp=Math.round(otm*(b/26/9)*1.5*100)/100,rmb=a+otp,g=Math.max(0,b+rmb-ud),
+        fw=p.fwMode||false;
 
-        // EPF
-        ee=Math.round((p.bossMode?b:g)*0.11*100)/100,
-        epfer=(p.bossMode?b:g)<=5000?Math.round((p.bossMode?b:g)*0.13*100)/100:Math.round((p.bossMode?b:g)*0.12*100)/100,
+        // EPF — zero for foreign workers
+        ee=fw?0:Math.round((p.bossMode?b:g)*0.11*100)/100,
+        epfer=fw?0:(p.bossMode?b:g)<=5000?Math.round((p.bossMode?b:g)*0.13*100)/100:Math.round((p.bossMode?b:g)*0.12*100)/100,
 
-        // SOCSO — 2026级距表 (含SKBBK)
-        soc=lookupSOCSO(p.bossMode?b:g),
+        // SOCSO — zero for foreign workers
+        soc=fw?{inv:0,skbbk:0,er:0}:lookupSOCSO(p.bossMode?b:g),
         socEmp=soc.inv + soc.skbbk,
         socEr=soc.er,
 
-        // SIP (EIS) — flat 0.2 %
-        sb=Math.min(p.bossMode?b:g,SIP_CAP),
-        se=Math.round(sb*SIP_RATE*100)/100,
-        ser3=Math.round(sb*SIP_RATE*100)/100,
+        // SIP (EIS) — zero for foreign workers
+        sb=fw?0:Math.min(p.bossMode?b:g,SIP_CAP),
+        se=fw?0:Math.round(sb*SIP_RATE*100)/100,
+        ser3=fw?0:Math.round(sb*SIP_RATE*100)/100,
+
+        // OT — zero for foreign workers
+        otmAdj=fw?0:otm,
+        otpAdj=fw?0:otp,
+        rmbAdj=a+otpAdj,
+        gAdj=Math.max(0,b+rmbAdj-ud),
 
         // Net & employer cost
-        n=g-v-ee-socEmp-se,
-        ec=g+epfer+socEr+ser3;
+        n=gAdj-v-ee-socEmp-se,
+        ec=gAdj+epfer+socEr+ser3;
 
     return{basic:b,allowance:a,advance:v,unpaidDays:u,ORP:o,unpaidDeduction:ud,
-           otMinutes:otm,otPay:otp,reimbursement:rmb,
-           gross:g,epfEmployee:ee,epfEmployer:epfer,
+           otMinutes:otmAdj,otPay:otpAdj,reimbursement:rmbAdj,
+           gross:gAdj,epfEmployee:ee,epfEmployer:epfer,
            socsoEmployee:socEmp,socsoEmployer:socEr,
            socsoInvalidity:soc.inv,socsoSKBBK:soc.skbbk,
-           sipEmployee:se,sipEmployer:ser3,net:n,employerCost:ec}
+           sipEmployee:se,sipEmployer:ser3,net:n,employerCost:ec,
+           fwMode:fw}
   }}
 
 })();
@@ -1100,6 +1119,14 @@ function onInputChange(){
   var bm=document.getElementById('chk_bossMode');
   if(bm){document.getElementById('bossModeTag').style.display=bm.checked?'inline-block':'none';}
 
+  var fw=document.getElementById('chk_fwMode');
+  if(fw){
+    document.getElementById('fwModeTag').style.display=fw.checked?'inline-block':'none';
+    var otEl=document.getElementById('otHours');
+    if(otEl){otEl.disabled=fw.checked;if(fw.checked)otEl.value=0;}
+    var otD=document.getElementById('otDisplay');
+    if(otD)otD.textContent=fw.checked?'OT: 无 (外劳模式)':'';
+  }
 
   var basic=parseFloat(document.getElementById('basicSalary').value)||0;
 
@@ -1113,7 +1140,7 @@ function onInputChange(){
 
   var periodDays=parseInt(document.getElementById('periodDays').textContent)||20;
 
-  var r=MalaysiaPayrollCore.calculate({basicSalary:basic,allowance:allowance,advance:advance,unpaidLeaveDays:unpaidDays,orpRule:orpRule,periodDays:periodDays,bossMode:document.getElementById('chk_bossMode')?document.getElementById('chk_bossMode').checked:false,otMinutes:parseInt(document.getElementById('otMinutes').value)||0});
+  var r=MalaysiaPayrollCore.calculate({basicSalary:basic,allowance:allowance,advance:advance,unpaidLeaveDays:unpaidDays,orpRule:orpRule,periodDays:periodDays,bossMode:document.getElementById('chk_bossMode')?document.getElementById('chk_bossMode').checked:false,otMinutes:parseInt(document.getElementById('otMinutes').value)||0,fwMode:document.getElementById('chk_fwMode')?document.getElementById('chk_fwMode').checked:false});
 
   document.getElementById('rGross').textContent='RM '+r.gross.toFixed(2);
 
@@ -1163,7 +1190,19 @@ function renderSimpleText(r){
     eba = document.getElementById('empBankAcc').value || '',
     pv = document.getElementById('calPeriod').value || '',
     td = r.epfEmployee + r.socsoEmployee + r.sipEmployee;
-  document.getElementById('payslipSimpleText').innerHTML = '<div class="sp-wrap"><div class="sp-title">SALARY OF ' + pv +
+  // Format period as MONTH YEAR
+  var periodLabel = pv;
+  if (pv && pv.indexOf(' to ') > 0) {
+    var startDate = pv.split(' to ')[0];
+    if (startDate) {
+      var parts = startDate.split('-');
+      if (parts.length === 3) {
+        var months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+        periodLabel = months[parseInt(parts[1]) - 1] + ' ' + parts[0];
+      }
+    }
+  }
+  document.getElementById('payslipSimpleText').innerHTML = '<div class="sp-wrap"><div class="sp-title">SALARY OF ' + periodLabel +
     '</div><div class="sp-row"><span><strong>NAME :</strong> ' + en +
     '</span><span style="float:right"><strong>IC:</strong> ' + eic + '</span></div><div class="sp-row">' + (eb || eba ?
       eba ? '<strong>' + eb + ' :</strong> ' + eba : '<strong>' + eb + '</strong>' : '') +
@@ -1199,9 +1238,21 @@ function renderFormalForm(r) {
     td = r.epfEmployee + r.socsoEmployee + r.sipEmployee,
     periodDays = parseInt(pd) || 20,
     unpaidDays = Number(r.unpaidDays) || 0;
+  // Format period as MONTH YEAR
+  var periodLabel = pv;
+  if (pv && pv.indexOf(' to ') > 0) {
+    var startDate = pv.split(' to ')[0];
+    if (startDate) {
+      var parts = startDate.split('-');
+      if (parts.length === 3) {
+        var months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+        periodLabel = months[parseInt(parts[1]) - 1] + ' ' + parts[0];
+      }
+    }
+  }
   document.getElementById('payslipFormalForm').innerHTML =
-    '<div class="fp-wrap"><div class="fp-header"><div class="fp-title">Payslip</div><div class="fp-company">' +
-    cn + '</div><div class="fp-subtitle">Payslip - Employee Salary Slip</div></div>' +
+    '<div class="fp-wrap"><div class="fp-header"><div class="fp-title">SALARY SLIP</div><div class="fp-company">' +
+    cn + '</div><div class="fp-subtitle">' + periodLabel + '</div></div>' +
     '<div class="fp-info"><div class="fp-info-l"><table>' +
     '<tr><td><strong>Name:</strong></td><td>' + en + '</td></tr>' +
     '<tr><td><strong>EPF No.:</strong></td><td>' + (ee || '-') + '</td></tr>' +
