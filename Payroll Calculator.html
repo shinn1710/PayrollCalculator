@@ -1211,19 +1211,21 @@ function renderSimpleText(r){
   }
   document.getElementById('payslipSimpleText').innerHTML = '<div class="sp-wrap"><div class="sp-title">SALARY OF ' + periodLabel +
     '</div><div class="sp-row"><span><strong>NAME :</strong> ' + en +
-    '</span><span style="float:right"><strong>IC:</strong> ' + eic + '</span></div><div class="sp-row">' + (eb || eba ?
+    '</span><span style="float:right"><strong>' + (r.fwMode ? 'PASSPORT' : 'IC') + ':</strong> ' + eic + '</span></div><div class="sp-row">' + (eb || eba ?
       eba ? '<strong>' + eb + ' :</strong> ' + eba : '<strong>' + eb + '</strong>' : '') +
-    '</div><div class="sp-body"><div class="sp-left"><table class="sp-tbl"><tr><th></th><th>Employer</th><th>Employee</th><th>Total</th></tr><tr><td>EPF</td><td>' +
+    '</div><div class="sp-body"><div class="sp-left"><table class="sp-tbl"><tr><th></th><th>Employer</th><th>Employee</th><th>Total</th></tr>' + (r.fwMode ? '' :
+    '<tr><td>EPF</td><td>' +
     r.epfEmployer.toFixed(2) + '</td><td>' + r.epfEmployee.toFixed(2) + '</td><td>' + (r.epfEmployer + r.epfEmployee)
     .toFixed(2) + '</td></tr><tr><td>SOCSO</td><td>' + r.socsoEmployer.toFixed(2) + '</td><td>' + r.socsoEmployee.toFixed(
       2) + '</td><td>' + (r.socsoEmployer + r.socsoEmployee).toFixed(2) + '</td></tr><tr><td>SIP</td><td>' + r.sipEmployer
     .toFixed(2) + '</td><td>' + r.sipEmployee.toFixed(2) + '</td><td>' + (r.sipEmployer + r.sipEmployee).toFixed(2) +
-    '</td></tr><tr class="sp-tot"><td>Total</td><td>' + r.epfEmployer.toFixed(2) + '</td><td>' + td.toFixed(2) +
+    '</td></tr>') + '<tr class="sp-tot"><td>Total</td><td>' + r.epfEmployer.toFixed(2) + '</td><td>' + td.toFixed(2) +
     '</td><td>' + (r.epfEmployer + r.socsoEmployer + r.sipEmployer + td).toFixed(2) +
     '</td></tr></table></div><div class="sp-right"><table class="sp-cal"><tr><td>Basic Salary</td><td class="sp-num">' + r
     .basic.toFixed(2) + '</td></tr><tr><td>Allowance + OT</td><td class="sp-num">' + (r.reimbursement
       .toFixed(2)) + '</td></tr><tr><td>Less: Unpaid Leave</td><td class="sp-num">' + (r.unpaidDeduction.toFixed(2)) +
-    '</td></tr><tr><td>Less: EPF + SOCSO + SIP</td><td class="sp-num">' + td.toFixed(2) +
+    '</td></tr>' + (r.fwMode ? '' :
+    '<tr><td>Less: EPF + SOCSO + SIP</td><td class="sp-num">' + td.toFixed(2) + '</td></tr>') +
     '</td></tr><tr><td>Advance</td><td class=\"sp-num\">' + r.advance.toFixed(2) +
     '</td></tr><tr class="sp-netr"><td>NET PAY</td><td class="sp-num sp-netv">' + r.net.toFixed(2) +
     '</td></tr></table></div></div><div style="padding:8px 12px;font-size:12px;border-top:2px solid #000;margin-top:6px;background:#f5f5f5;"><strong>Annual Leave:</strong> ' +
@@ -1283,17 +1285,19 @@ function renderFormalForm(r) {
     ('<tr><td>Less: Unpaid Leave</td><td class="fp-amt">-' + r.unpaidDeduction.toFixed(2) + '</td></tr>') +
     '<tr class="fp-gross"><td>Gross Salary</td><td class="fp-amt">' + r.gross.toFixed(2) + '</td></tr></table>' +
     '<div class="fp-sec">Deductions</div><table class="fp-tbl">' +
+    (r.fwMode ? '' :
     '<tr><td>EPF (Employee)</td><td class="fp-amt">' + r.epfEmployee.toFixed(2) + '</td></tr>' +
     '<tr><td>SOCSO (Employee)</td><td class="fp-amt">' + r.socsoEmployee.toFixed(2) + '</td></tr>' +
-    '<tr><td>SIP</td><td class="fp-amt">' + r.sipEmployee.toFixed(2) + '</td></tr>' +
+    '<tr><td>SIP</td><td class="fp-amt">' + r.sipEmployee.toFixed(2) + '</td></tr>') +
     ('<tr><td>Advance</td><td class="fp-amt">' + r.advance.toFixed(2) + '</td></tr>') +
     '<tr class="fp-tot"><td>Total Deductions</td><td class="fp-amt">' + td.toFixed(2) + '</td></tr></table>' +
     '<div class="fp-netl">Net Salary</div><div class="fp-neta">' + r.net.toFixed(2) + '</div>' +
+    (r.fwMode ? '' :
     '<div class="fp-sec">Employer Contribution</div><table class="fp-tbl">' +
     '<tr><td>EPF (Employer)</td><td class="fp-amt">' + r.epfEmployer.toFixed(2) + '</td></tr>' +
     '<tr><td>SOCSO (Employer)</td><td class="fp-amt">' + r.socsoEmployer.toFixed(2) + '</td></tr>' +
     '<tr><td>SIP (Employer)</td><td class="fp-amt">' + r.sipEmployer.toFixed(2) + '</td></tr>' +
-    '<tr class="fp-tot"><td>Total Employer Cost</td><td class="fp-amt">' + r.employerCost.toFixed(2) + '</td></tr></table>' +
+    '<tr class="fp-tot"><td>Total Employer Cost</td><td class="fp-amt">' + r.employerCost.toFixed(2) + '</td></tr></table>') +
     '<div style="margin-top:6px;font-size:11px;border-top:1px solid #ddd;padding-top:4px;">' +
     '<span><strong>AL Balance:</strong> ' + (document.getElementById('alBalance') ? document.getElementById('alBalance').value : '0') +
     '</span>&nbsp;&nbsp;&nbsp;' +
