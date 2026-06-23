@@ -847,7 +847,8 @@ span.flatpickr-weekday {
 </select>
 </div>
 <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
-<button class="btn btn-success" onclick="saveEmployee()" style="font-size:13px">💾 保存当前</button>
+<button class="btn btn-success" onclick="saveEmployee()" style="font-size:13px">💾 保存</button>
+<button class="btn btn-outline" onclick="loadEmployee()" style="font-size:13px">📂 读取</button>
 <button class="btn btn-danger" onclick="deleteEmployee()" style="font-size:13px">🗑️ 删除</button>
 </div>
 </div>
@@ -1596,6 +1597,17 @@ function saveEmployee() {
   document.getElementById('empSelector').value = name;
   saveState();
   alert('✅ 已保存: ' + name);
+}
+
+function loadEmployee() {
+  var name = document.getElementById('empName').value.trim();
+  if (!name) { alert('请先选择或输入员工姓名！'); return; }
+  var db = getEmpDB();
+  if (!db.data[name]) { alert('❌ 未找到「' + name + '」的已保存资料'); return; }
+  restoreFormState(db.data[name]);
+  updateALDisplay();
+  onInputChange();
+  alert('📂 已载入: ' + name);
 }
 
 function deleteEmployee() {
