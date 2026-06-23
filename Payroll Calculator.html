@@ -117,7 +117,7 @@
 
 </div></div>
 
-<div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📋 请假审批 (Leave Approval)</h3><span class="arrow">▶</span></div>
+<div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📋 请假审批 (Leave Approval)</h3><span class="arrow">▶</span><span style="font-size:10px;color:#888;margin-left:8px;font-weight:400;">点击展开提交请假</span></div>
 <div class="card-bd">
   <div class="row">
     <div class="fld"><label>员工</label><input id="leaveEmpName" readonly style="background:#f0f0f0;" placeholder="请先在员工资料填写姓名"></div>
@@ -140,10 +140,13 @@
   </div>
 </div></div>
 
+<div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📋 年假管理 (Annual Leave)</h3><span class="arrow open">▶</span></div>
+<div class="card-bd open">
 <div class="row"><div class="fld"><label data-i18n="al_balance">带薪年假 (Annual Leave)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" readonly style="cursor:not-allowed;background:#f0f0f0;font-weight:bold;"></div>
 <div class="fld"><label data-i18n="al_used">本月已用年假 (Annual Leave Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onAlUsedChange()"></div>
 <div class="fld"><label>每年配额 (Entitlement)</label><input id="alEntitlement" type="number" min="0" step="0.5" value="14" oninput="onAlChange()"></div>
 <div class="fld" style="flex:2;"><label style="color:#666;font-size:11px;">📋 Employment Act 自动计算</label><span id="alCalcDisplay" style="font-size:12px;color:#555;padding:8px 12px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd;">请填写入职日期以自动计算法定年假</span></div></div>
+</div></div>
 <div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📅 日期与考勤</h3><span class="badge" id="calBadge">0 天无薪假</span><span class="arrow open">▶</span></div>
 
 <div class="card-bd open"><div class="cal-row">
@@ -1412,7 +1415,21 @@ function onInputChange(){
   if(fw){
     document.getElementById('fwModeTag').style.display=fw.checked?'inline-block':'none';
     var otEl=document.getElementById('otHours');
-    if(otEl){otEl.disabled=fw.checked;if(fw.checked)otEl.value=0;}
+    var otSaved=document.getElementById('otMinutes');
+    if(otEl){
+      if(fw.checked){
+        // Save current OT value before clearing
+        otEl.dataset.prevValue = otEl.value;
+        otEl.value=0;
+        otEl.disabled=true;
+      } else {
+        otEl.disabled=false;
+        // Restore previous value if available
+        if(otEl.dataset.prevValue && otEl.dataset.prevValue !== '0') {
+          otEl.value = otEl.dataset.prevValue;
+        }
+      }
+    }
     var otD=document.getElementById('otDisplay');
     if(otD)otD.textContent=fw.checked?'OT: 无 (外劳模式)':'';
     // Foreign worker: disable EPF/SOCSO fields, update IC placeholder
