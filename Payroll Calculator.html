@@ -109,7 +109,9 @@
 
 <div class="row"><div class="fld"><label data-i18n="emp_desig">职位</label><input id="empDesignation" placeholder="e.g. Manager" oninput="onInputChange()"></div>
 
-<div class="fld"><label data-i18n="emp_bank">银行 (Bank)</label><input id="empBank" placeholder="e.g. Maybank, CIMB" oninput="onInputChange()"></div></div>
+<div class="fld"><label>入职日期 (Join Date)</label><input id="empJoinDate" type="date" onchange="onJoinDateChange()" style="font-size:14px;"></div></div>
+
+<div class="row"><div class="fld"><label data-i18n="emp_bank">银行 (Bank)</label><input id="empBank" placeholder="e.g. Maybank, CIMB" oninput="onInputChange()"></div>
 
 <div class="row"><div class="fld"><label data-i18n="emp_bank_acc">银行账号</label><input id="empBankAcc" placeholder="Account No." oninput="onInputChange()"></div></div>
 
@@ -118,7 +120,8 @@
 
 <div class="row"><div class="fld"><label data-i18n="al_balance">带薪年假 (Annual Leave)</label><input id="alBalance" type="number" min="0" step="0.5" value="0" readonly style="cursor:not-allowed;background:#f0f0f0;font-weight:bold;"></div>
 <div class="fld"><label data-i18n="al_used">本月已用年假 (Annual Leave Used)</label><input id="alUsed" type="number" min="0" step="0.5" value="0" oninput="onAlUsedChange()"></div>
-<div class="fld"><label>每年配额 (Entitlement)</label><input id="alEntitlement" type="number" min="0" step="0.5" value="14" oninput="onAlChange()"></div></div>
+<div class="fld"><label>每年配额 (Entitlement)</label><input id="alEntitlement" type="number" min="0" step="0.5" value="14" oninput="onAlChange()"></div>
+<div class="fld" style="flex:2;"><label style="color:#666;font-size:11px;">📋 Employment Act 自动计算</label><span id="alCalcDisplay" style="font-size:12px;color:#555;padding:8px 12px;background:#f5f5f5;border-radius:6px;border:1px solid #ddd;">请填写入职日期以自动计算法定年假</span></div></div>
 <div class="card"><div class="card-hd" onclick="toggleCard(this)"><h3>📅 日期与考勤</h3><span class="badge" id="calBadge">0 天无薪假</span><span class="arrow open">▶</span></div>
 
 <div class="card-bd open"><div class="cal-row">
@@ -702,7 +705,7 @@ var LS_KEY='PRC_State';
 function saveState(){
   try{
     var d={};
-    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
       var el=document.getElementById(id);if(el)d[id]=el.value
     });
     if(fpPeriod)d.pd=fpPeriod.selectedDates.map(function(x){return x.toISOString().split('T')[0]});
@@ -718,7 +721,7 @@ function restoreState(){
   try{
     var raw=localStorage.getItem(LS_KEY);if(!raw)return;
     var d=JSON.parse(raw);
-    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
       var el=document.getElementById(id);if(el&&d[id]!==undefined)el.value=d[id]
     });
     if(fpPeriod&&d.pd)fpPeriod.setDate(d.pd);
@@ -745,7 +748,7 @@ function saveEmpDB(db) {
 
 function captureFormState() {
   var d = {};
-  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
     var el = document.getElementById(id); if (el) d[id] = el.value;
   });
   if (fpPeriod) d.pd = fpPeriod.selectedDates.map(function(x){ return x.toISOString().split('T')[0]; });
@@ -755,7 +758,7 @@ function captureFormState() {
 }
 
 function restoreFormState(d) {
-  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
     var el = document.getElementById(id); if (el && d[id] !== undefined) el.value = d[id];
   });
   if (fpPeriod && d.pd) fpPeriod.setDate(d.pd); else fpPeriod.clear();
@@ -1151,6 +1154,8 @@ function updateALDisplay() {
   alData.balance = Math.max(0, alData.entitlement - alData.used);
   if (balEl) balEl.value = alData.balance.toFixed(1);
   saveALData(name, alData);
+  // Also trigger join date calc
+  if (document.getElementById('empJoinDate').value) onJoinDateChange();
 }
 
 function onAlChange() {
@@ -1174,6 +1179,86 @@ function onAlUsedChange() {
   document.getElementById('alBalance').value = alData.balance.toFixed(1);
   saveALData(name, alData);
   onInputChange();
+}
+
+// === Employment Act 1955 Section 60E: Annual Leave Calculator ===
+function calcStatutoryAL(joinDateStr) {
+  if (!joinDateStr) return null;
+  var joinDate = new Date(joinDateStr);
+  var now = new Date();
+  if (joinDate > now) return { error: '入职日期不能在未来' };
+  
+  // Calculate completed years of service
+  var years = now.getFullYear() - joinDate.getFullYear();
+  var monthDiff = now.getMonth() - joinDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < joinDate.getDate())) {
+    years--;
+  }
+  
+  // Determine entitlement based on years of service (Section 60E)
+  var entitlement;
+  if (years < 2) entitlement = 8;
+  else if (years < 5) entitlement = 12;
+  else entitlement = 16;
+  
+  // Check if first year (less than 1 year) → prorated
+  var firstYearProrated = null;
+  if (years < 1) {
+    // Calculate completed full months since join date
+    var monthsSinceJoin = (now.getFullYear() - joinDate.getFullYear()) * 12 + (now.getMonth() - joinDate.getMonth());
+    if (now.getDate() < joinDate.getDate()) monthsSinceJoin--; // not yet completed this month
+    
+    var completedFullMonths = Math.max(0, monthsSinceJoin);
+    var proratedDays = (completedFullMonths / 12) * 8;
+    // Round to nearest 0.5
+    firstYearProrated = Math.round(proratedDays * 2) / 2;
+  }
+  
+  // If joined mid-year in a previous year, check if first year was prorated
+  var displayText = '服务 ' + years + ' 年';
+  if (years >= 1) {
+    displayText += ' → 法定年假 ' + entitlement + ' 天';
+  } else if (firstYearProrated !== null) {
+    displayText += ' (未满一年) → 法定年假 ' + firstYearProrated + ' 天 (按比例折算)';
+  }
+  
+  return {
+    years: years,
+    entitlement: years >= 1 ? entitlement : firstYearProrated,
+    firstYearProrated: firstYearProrated,
+    displayText: displayText,
+    fullEntitlement: entitlement
+  };
+}
+
+function onJoinDateChange() {
+  var joinDate = document.getElementById('empJoinDate').value;
+  var displayEl = document.getElementById('alCalcDisplay');
+  var entEl = document.getElementById('alEntitlement');
+  
+  if (!joinDate) {
+    displayEl.textContent = '请填写入职日期以自动计算法定年假';
+    return;
+  }
+  
+  var result = calcStatutoryAL(joinDate);
+  if (!result) return;
+  
+  if (result.error) {
+    displayEl.textContent = '⚠️ ' + result.error;
+    return;
+  }
+  
+  // Update display
+  displayEl.innerHTML = '<strong>' + result.displayText + '</strong>' +
+    ' &nbsp;|&nbsp; <span style="color:#2b5797;font-weight:700;">建议配额: ' + result.entitlement + ' 天</span>' +
+    ' &nbsp; <span style="font-size:10px;color:#888;">(可手动修改)</span>';
+  
+  // Auto-fill entitlement if not manually changed (only on first calculation)
+  if (entEl && parseFloat(entEl.value) === 14) {
+    entEl.value = result.entitlement;
+    onAlChange();
+  }
 }
 
 function onInputChange(){
