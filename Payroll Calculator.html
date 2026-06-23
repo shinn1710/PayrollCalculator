@@ -1216,12 +1216,16 @@ function submitLeave() {
       var currentUsed = parseFloat(document.getElementById('alUsed').value) || 0;
       document.getElementById('alUsed').value = (currentUsed + days).toFixed(1);
       onAlUsedChange();
+      // Persistence: force save
+      saveALData(name, getALData(name));
       resultEl.innerHTML = '✅ <strong>年假充足</strong> — 已扣减 ' + days + ' 天年假<br>剩余年假: <strong>' +
         (balance - days).toFixed(1) + '</strong> 天<br>💡 本次请假不扣薪资，无需填入无薪假日历。';
     } else {
       var currentUsed = parseFloat(document.getElementById('alUsed').value) || 0;
       document.getElementById('alUsed').value = (currentUsed + balance).toFixed(1);
       onAlUsedChange();
+      // Persistence: force save
+      saveALData(name, getALData(name));
       var overflowDays = days - balance;
       resultEl.innerHTML = '⚠️ <strong>年假不足！</strong><br>年假余额: ' + balance.toFixed(1) + ' 天（已全部扣减）<br>溢出天数: <strong style="color:#d32f2f;">' + overflowDays.toFixed(1) + ' 天</strong><br>⏳ 正在自动转为无薪假...<br>';
 
@@ -1317,37 +1321,43 @@ function onAlUsedChange() {
 // === Employment Act 1955 Section 60E: Annual Leave Calculator ===
 function calcStatutoryAL(joinDateStr) {
   if (!joinDateStr) return null;
-  var joinDate = new Date(joinDateStr);
+  // Use UTC to avoid timezone drift
+  var joinDate = new Date(joinDateStr + 'T00:00:00Z');
   var now = new Date();
-  if (joinDate > now) return { error: '入职日期不能在未来' };
-  
-  // Calculate completed years of service
-  var years = now.getFullYear() - joinDate.getFullYear();
-  var monthDiff = now.getMonth() - joinDate.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < joinDate.getDate())) {
+  var nowUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  var joinUTC = joinDate.getTime();
+  if (joinUTC > nowUTC) return { error: '入职日期不能在未来' };
+
+  // Calculate completed years using UTC dates
+  var joinYear = new Date(joinUTC).getUTCFullYear();
+  var joinMonth = new Date(joinUTC).getUTCMonth();
+  var joinDay = new Date(joinUTC).getUTCDate();
+  var nowYear = new Date(nowUTC).getUTCFullYear();
+  var nowMonth = new Date(nowUTC).getUTCMonth();
+  var nowDay = new Date(nowUTC).getUTCDate();
+
+  var years = nowYear - joinYear;
+  if (nowMonth < joinMonth || (nowMonth === joinMonth && nowDay < joinDay)) {
     years--;
   }
-  
+
   // Determine entitlement based on years of service (Section 60E)
   var entitlement;
   if (years < 2) entitlement = 8;
   else if (years < 5) entitlement = 12;
   else entitlement = 16;
-  
-  // Check if first year (less than 1 year) → prorated
+
+  // Prorated for first year (less than 1 year)
   var firstYearProrated = null;
   if (years < 1) {
-    // Calculate completed full months since join date
-    var monthsSinceJoin = (now.getFullYear() - joinDate.getFullYear()) * 12 + (now.getMonth() - joinDate.getMonth());
-    if (now.getDate() < joinDate.getDate()) monthsSinceJoin--; // not yet completed this month
-    
+    // UTC-based month calculation
+    var monthsSinceJoin = (nowYear - joinYear) * 12 + (nowMonth - joinMonth);
+    if (nowDay < joinDay) monthsSinceJoin--;
     var completedFullMonths = Math.max(0, monthsSinceJoin);
     var proratedDays = (completedFullMonths / 12) * 8;
-    // Round to nearest 0.5
     firstYearProrated = Math.round(proratedDays * 2) / 2;
   }
-  
-  // If joined mid-year in a previous year, check if first year was prorated
+
   var displayText = '服务 ' + years + ' 年';
   if (years >= 1) {
     displayText += ' → 法定年假 ' + entitlement + ' 天';
