@@ -880,7 +880,7 @@ span.flatpickr-weekday {
 
 <div class="row"><div class="fld"><label data-i18n="emp_desig">职位</label><input id="empDesignation" placeholder="e.g. Manager" oninput="onInputChange()"></div>
 
-<div class="fld"><label>入职日期 (Join Date)</label><input id="empJoinDate" type="date" onchange="onJoinDateChange()" style="font-size:14px;"></div></div>
+<div class="fld"><label>入职日期 (Join Date)</label><input id="empJoinDate" type="text" placeholder="选择入职日期..." readonly style="background:#fff;"></div></div>
 
 <div class="row"><div class="fld"><label data-i18n="emp_bank">银行 (Bank)</label><input id="empBank" placeholder="e.g. Maybank, CIMB" oninput="onInputChange()"></div>
 
@@ -1459,7 +1459,7 @@ var MalaysiaPayrollCore = (function() {
     var b=Number(p.basicSalary)||0,a=Number(p.allowance)||0,v=Number(p.advance)||0,
         u=Number(p.unpaidLeaveDays)||0,
         d=p.orpRule==='calendar'?(Number(p.periodDays)||26):26,
-        o=b/d,ud=u*o,otm=Number(p.otMinutes)||0,otp=Math.round(otm*(b/26/9)*1.5*100)/100,rmb=a+otp,g=Math.max(0,b+rmb-ud),
+        o=b/d,ud=u*o,otm=Number(p.otMinutes)||0,otp=Math.round((otm/60)*(b/26/9)*1.5*100)/100,rmb=a+otp,g=Math.max(0,b+rmb-ud),
         fw=p.fwMode||false;
 
         // EPF — zero for foreign workers
@@ -1505,7 +1505,7 @@ var LS_KEY='PRC_State';
 function saveState(){
   try{
     var d={};
-    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed','alEntitlement','otHours','otMinutes'].forEach(function(id){
       var el=document.getElementById(id);if(el)d[id]=el.value
     });
     if(fpPeriod)d.pd=fpPeriod.selectedDates.map(function(x){return x.toISOString().split('T')[0]});
@@ -1521,7 +1521,7 @@ function restoreState(){
   try{
     var raw=localStorage.getItem(LS_KEY);if(!raw)return;
     var d=JSON.parse(raw);
-    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+    ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed','alEntitlement','otHours','otMinutes'].forEach(function(id){
       var el=document.getElementById(id);if(el&&d[id]!==undefined)el.value=d[id]
     });
     if(fpPeriod&&d.pd)fpPeriod.setDate(d.pd);
@@ -1548,22 +1548,32 @@ function saveEmpDB(db) {
 
 function captureFormState() {
   var d = {};
-  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed','alEntitlement','otHours','otMinutes'].forEach(function(id){
     var el = document.getElementById(id); if (el) d[id] = el.value;
   });
   if (fpPeriod) d.pd = fpPeriod.selectedDates.map(function(x){ return x.toISOString().split('T')[0]; });
   if (fpHoliday) d.hd = fpHoliday.selectedDates.map(function(x){ return x.toISOString().split('T')[0]; });
   if (fpUnpaid) d.ud = fpUnpaid.selectedDates.map(function(x){ return x.toISOString().split('T')[0]; });
+  // Save toggle states
+  var bm = document.getElementById('chk_bossMode');
+  if (bm) d.bossMode = bm.checked;
+  var fw = document.getElementById('chk_fwMode');
+  if (fw) d.fwMode = fw.checked;
   return d;
 }
 
 function restoreFormState(d) {
-  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed'].forEach(function(id){
+  ['coName','coSsm','coAddr','empName','empIc','empEpf','empSocso','empDesignation','empJoinDate','empBank','empBankAcc','advance','basicSalary','allowance','unpaidDays','orpRule','alBalance','alUsed','alEntitlement','otHours','otMinutes'].forEach(function(id){
     var el = document.getElementById(id); if (el && d[id] !== undefined) el.value = d[id];
   });
   if (fpPeriod && d.pd) fpPeriod.setDate(d.pd); else fpPeriod.clear();
   if (fpHoliday && d.hd) fpHoliday.setDate(d.hd); else fpHoliday.clear();
   if (fpUnpaid && d.ud) fpUnpaid.setDate(d.ud); else fpUnpaid.clear();
+  // Restore toggle states
+  var bm = document.getElementById('chk_bossMode');
+  if (bm && d.bossMode !== undefined) bm.checked = d.bossMode;
+  var fw = document.getElementById('chk_fwMode');
+  if (fw && d.fwMode !== undefined) fw.checked = d.fwMode;
 }
 
 function refreshEmpSelector() {
@@ -1687,6 +1697,11 @@ document.addEventListener('DOMContentLoaded',function(){window.addEventListener(
   // Leave approval date picker
   var fpLeave = flatpickr('#leaveDates',{mode:'multiple',dateFormat:'Y-m-d',onChange:function(sd){
     document.getElementById('leaveDays').value=sd.length;
+  }});
+
+  // Join date flatpickr (single date)
+  var fpJoin = flatpickr('#empJoinDate',{dateFormat:'Y-m-d',onChange:function(sd){
+    onJoinDateChange();
   }});
 
   // Auto-fill employee name in leave form
@@ -1885,7 +1900,7 @@ function importAttendanceXLS(input) {
       var basic = parseFloat(document.getElementById('basicSalary').value) || 0;
       if (basic > 0) {
         var hourlyRate = basic / 26 / 9;
-        var otPay = Math.round(otMin * hourlyRate * 1.5 * 100) / 100;
+        var otPay = Math.round((otMin / 60) * hourlyRate * 1.5 * 100) / 100;
         alert('✅ 成功导入 ' + matchedEmp.name + ' 的打卡记录！\n' +
           '   OT 分钟: ' + otMin + 'min\n' +
           '   OT 金额: RM ' + otPay.toFixed(2) + '\n' +
@@ -2456,19 +2471,35 @@ function importSystemJSON(i){
 
 function clearAll(){
   if (!confirm('确定清除所有数据？')) return;
-  var inputs = document.querySelectorAll('input,textarea');
+  // Reset all input/select fields to defaults
+  var inputs = document.querySelectorAll('input, select, textarea');
   for (var i = 0; i < inputs.length; i++) {
-    if (inputs[i].type !== 'file') inputs[i].value = inputs[i].defaultValue || ''
+    var el = inputs[i];
+    if (el.type === 'file' || el.id === 'empSelector') continue;
+    if (el.type === 'checkbox') { el.checked = false; continue; }
+    el.value = el.defaultValue || '';
   }
+  // Clear flatpickr calendars
   fpPeriod.clear();
   fpHoliday.clear();
   fpUnpaid.clear();
+  if (typeof fpJoin !== 'undefined') fpJoin.clear();
+  // Reset displayed counts
   document.getElementById('periodDays').textContent = '0';
   document.getElementById('holidayCount').textContent = '0';
   document.getElementById('unpaidCount').textContent = '0';
   document.getElementById('calBadge').textContent = '0 天无薪假';
   localStorage.removeItem(LS_KEY);
-  onInputChange()
+  localStorage.removeItem(EMP_DB_KEY);
+  // Reset OT display
+  var otD = document.getElementById('otDisplay');
+  if (otD) otD.textContent = '';
+  // Reset AL calc display
+  var alD = document.getElementById('alCalcDisplay');
+  if (alD) alD.textContent = '请填写入职日期以自动计算法定年假';
+  // Refresh employee selector
+  if (typeof refreshEmpSelector === 'function') refreshEmpSelector();
+  onInputChange();
 }
 
 
