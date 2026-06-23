@@ -908,8 +908,66 @@ function renderSimpleText(r){
     (document.getElementById('alBalance') ? document.getElementById('alBalance').value : '0') +
     '</span><span style="margin-left:24px;"><strong>AL Used:</strong> ' + (document.getElementById('alUsed') ? document
       .getElementById('alUsed').value : '0') + '</span></div></div></div>'
-}function renderFormalForm(r){var cn=document.getElementById('coName').value||'My Company',en=document.getElementById('empName').value||'',eic=document.getElementById('empIc').value||'',eb=document.getElementById('empBank').value||'',eba=document.getElementById('empBankAcc').value||'',ee=document.getElementById('empEpf').value||'',es=document.getElementById('empSocso').value||'',pv=document.getElementById('calPeriod').value||'',pd=document.getElementById('periodDays').textContent||'0',td=r.epfEmployee+r.socsoEmployee+r.sipEmployee,periodDays=parseInt(pd)||20,unpaidDays=Number(r.unpaidDays)||0;document.getElementById('payslipFormalForm').innerHTML='<div class="fp-wrap"><div class="fp-header"><div class="fp-title">Payslip</div><div class="fp-company">'+cn+'</div><div class="fp-subtitle">Payslip - Employee Salary Slip</div></div><div class="fp-info"><div class="fp-info-l"><table><tr><td><strong>Name:</strong></td><td>'+en+'</td></tr><tr><td><strong>EPF No.:</strong></td><td>'+(ee||'-')+'</td></tr><tr><td><strong>Bank:</strong></td><td>'+(eb||'-')+'</td></tr><tr><td><strong>From:</strong></td><td>'+(pv.split(' to ')[0]||pv)+'</td></tr><tr><td><strong>Required Working Days:</strong></td><td>'+pd+'</td></tr><tr><td><strong>Unpaid Leave:</strong></td><td>'+unpaidDays+'</td></tr><tr><td><strong>Actual Working Days:</strong></td><td>'+(periodDays-unpaidDays)+'</td></tr><tr><td><strong>AL Balance:</strong></td><td>'+(document.getElementById('alBalance')?document.getElementById('alBalance').value:'0')+'</td></tr><tr><td><strong>AL Used:</strong></td><td>'+(document.getElementById('alUsed')?document.getElementById('alUsed').value:'0')+'</td></tr></table></div><div class="fp-info-r"><table><tr><td><strong>NRIC:</strong></td><td>'+eic+'</td></tr><tr><td><strong>SOCSO No.:</strong></td><td>'+(es||'-')+'</td></tr><tr><td><strong>Account No.:</strong></td><td>'+(eba||'-')+'</td></tr><tr><td><strong>To:</strong></td><td>'+(pv.split(' to ')[1]||pv)+'</td></tr></table></div></div><div class="fp-sec">Earnings</div><table class="fp-tbl"><tr><td>Basic Salary (RM)</td><td class="fp-amt">'+r.basic.toFixed(2)+'</td></tr>'+('<tr><td>Reimbursement (Allowance+OT)</td><td class="fp-amt">'+r.reimbursement.toFixed(2)+'</td></tr>')+('<tr><td>Less: Unpaid Leave</td><td class="fp-amt">-'+r.unpaidDeduction.toFixed(2)+'</td></tr>')+'<tr class="fp-gross"><td>Gross Salary</td><td class="fp-amt">'+r.gross.toFixed(2)+'</td></tr></table><div class="fp-sec">Deductions</div><table class="fp-tbl"><tr><td>EPF (Employee)</td><td class="fp-amt">'+r.epfEmployee.toFixed(2)+'</td></tr><tr><td>SOCSO (Employee)</td><td class="fp-amt">'+r.socsoEmployee.toFixed(2)+'</td></tr><tr><td>SIP</td><td class="fp-amt">'+r.sipEmployee.toFixed(2)+'</td></tr>'+('<tr><td>Advance</td><td class="fp-amt">'+r.advance.toFixed(2)+'</td></tr>')+'<tr class="fp-tot"><td>Total Deductions</td><td class="fp-amt">'+td.toFixed(2)+'</td></tr></table><div class="fp-netl">Net Salary</div><div class="fp-neta">'+r.net.toFixed(2)+'</div><div class="fp-sec">Employer Contribution</div><table class="fp-tbl"><tr><td>EPF (Employer)</td><td class="fp-amt">'+r.epfEmployer.toFixed(2)+'</td></tr><tr><td>SOCSO (Employer)</td><td class="fp-amt">'+r.socsoEmployer.toFixed(2)+'</td></tr><tr><td>SIP (Employer)</td><td class="fp-amt">'+r.sipEmployer.toFixed(2)+'</td></tr><tr class="fp-tot"><td>Total Employer Cost</td><td class="fp-amt">'+r.employerCost.toFixed(2)+'</td></tr></table><div style="margin-top:6px;font-size:11px;border-top:1px solid #ddd;padding-top:4px;"><span><strong>AL Balance:</strong> '+(document.getElementById('alBalance')?document.getElementById('alBalance').value:'0')+'</span>&nbsp;&nbsp;&nbsp;<span><strong>AL Used:</strong> '+(document.getElementById('alUsed')?document.getElementById('alUsed').value:'0')+'</span></div><div class="fp-sign"><div class="fp-sign-line">Employee Signature</div><div class="fp-sign-line">Date</div></div></div>'}
+}
 
+function renderFormalForm(r) {
+  var cn = document.getElementById('coName').value || 'My Company',
+    en = document.getElementById('empName').value || '',
+    eic = document.getElementById('empIc').value || '',
+    eb = document.getElementById('empBank').value || '',
+    eba = document.getElementById('empBankAcc').value || '',
+    ee = document.getElementById('empEpf').value || '',
+    es = document.getElementById('empSocso').value || '',
+    pv = document.getElementById('calPeriod').value || '',
+    pd = document.getElementById('periodDays').textContent || '0',
+    td = r.epfEmployee + r.socsoEmployee + r.sipEmployee,
+    periodDays = parseInt(pd) || 20,
+    unpaidDays = Number(r.unpaidDays) || 0;
+  document.getElementById('payslipFormalForm').innerHTML =
+    '<div class="fp-wrap"><div class="fp-header"><div class="fp-title">Payslip</div><div class="fp-company">' +
+    cn + '</div><div class="fp-subtitle">Payslip - Employee Salary Slip</div></div>' +
+    '<div class="fp-info"><div class="fp-info-l"><table>' +
+    '<tr><td><strong>Name:</strong></td><td>' + en + '</td></tr>' +
+    '<tr><td><strong>EPF No.:</strong></td><td>' + (ee || '-') + '</td></tr>' +
+    '<tr><td><strong>Bank:</strong></td><td>' + (eb || '-') + '</td></tr>' +
+    '<tr><td><strong>From:</strong></td><td>' + (pv.split(' to ')[0] || pv) + '</td></tr>' +
+    '<tr><td><strong>Required Working Days:</strong></td><td>' + pd + '</td></tr>' +
+    '<tr><td><strong>Unpaid Leave:</strong></td><td>' + unpaidDays + '</td></tr>' +
+    '<tr><td><strong>Actual Working Days:</strong></td><td>' + (periodDays - unpaidDays) + '</td></tr>' +
+    '<tr><td><strong>AL Balance:</strong></td><td>' + (document.getElementById('alBalance') ? document.getElementById('alBalance').value : '0') +
+    '</td></tr>' +
+    '<tr><td><strong>AL Used:</strong></td><td>' + (document.getElementById('alUsed') ? document.getElementById('alUsed').value : '0') +
+    '</td></tr></table></div>' +
+    '<div class="fp-info-r"><table>' +
+    '<tr><td><strong>NRIC:</strong></td><td>' + eic + '</td></tr>' +
+    '<tr><td><strong>SOCSO No.:</strong></td><td>' + (es || '-') + '</td></tr>' +
+    '<tr><td><strong>Account No.:</strong></td><td>' + (eba || '-') + '</td></tr>' +
+    '<tr><td><strong>To:</strong></td><td>' + (pv.split(' to ')[1] || pv) + '</td></tr></table></div></div>' +
+    '<div class="fp-sec">Earnings</div><table class="fp-tbl">' +
+    '<tr><td>Basic Salary (RM)</td><td class="fp-amt">' + r.basic.toFixed(2) + '</td></tr>' +
+    ('<tr><td>Reimbursement (Allowance+OT)</td><td class="fp-amt">' + r.reimbursement.toFixed(2) + '</td></tr>') +
+    ('<tr><td>Less: Unpaid Leave</td><td class="fp-amt">-' + r.unpaidDeduction.toFixed(2) + '</td></tr>') +
+    '<tr class="fp-gross"><td>Gross Salary</td><td class="fp-amt">' + r.gross.toFixed(2) + '</td></tr></table>' +
+    '<div class="fp-sec">Deductions</div><table class="fp-tbl">' +
+    '<tr><td>EPF (Employee)</td><td class="fp-amt">' + r.epfEmployee.toFixed(2) + '</td></tr>' +
+    '<tr><td>SOCSO (Employee)</td><td class="fp-amt">' + r.socsoEmployee.toFixed(2) + '</td></tr>' +
+    '<tr><td>SIP</td><td class="fp-amt">' + r.sipEmployee.toFixed(2) + '</td></tr>' +
+    ('<tr><td>Advance</td><td class="fp-amt">' + r.advance.toFixed(2) + '</td></tr>') +
+    '<tr class="fp-tot"><td>Total Deductions</td><td class="fp-amt">' + td.toFixed(2) + '</td></tr></table>' +
+    '<div class="fp-netl">Net Salary</div><div class="fp-neta">' + r.net.toFixed(2) + '</div>' +
+    '<div class="fp-sec">Employer Contribution</div><table class="fp-tbl">' +
+    '<tr><td>EPF (Employer)</td><td class="fp-amt">' + r.epfEmployer.toFixed(2) + '</td></tr>' +
+    '<tr><td>SOCSO (Employer)</td><td class="fp-amt">' + r.socsoEmployer.toFixed(2) + '</td></tr>' +
+    '<tr><td>SIP (Employer)</td><td class="fp-amt">' + r.sipEmployer.toFixed(2) + '</td></tr>' +
+    '<tr class="fp-tot"><td>Total Employer Cost</td><td class="fp-amt">' + r.employerCost.toFixed(2) + '</td></tr></table>' +
+    '<div style="margin-top:6px;font-size:11px;border-top:1px solid #ddd;padding-top:4px;">' +
+    '<span><strong>AL Balance:</strong> ' + (document.getElementById('alBalance') ? document.getElementById('alBalance').value : '0') +
+    '</span>&nbsp;&nbsp;&nbsp;' +
+    '<span><strong>AL Used:</strong> ' + (document.getElementById('alUsed') ? document.getElementById('alUsed').value : '0') +
+    '</span></div>' +
+    '<div class="fp-sign"><div class="fp-sign-line">Employee Signature</div>' +
+    '<div class="fp-sign-line">Date</div></div></div>'
+}
 
 
 function printSimple(){
