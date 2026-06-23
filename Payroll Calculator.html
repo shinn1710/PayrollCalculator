@@ -1869,53 +1869,6 @@ function importAttendanceXLS(input) {
       var otEl = document.getElementById('otDisplay');
       if (otEl) otEl.textContent = 'OT: ' + Math.floor(otMin / 60) + 'h' + (otMin % 60 > 0 ? otMin % 60 + 'min' : '');
 
-      // === Auto-detect Unpaid Leave ===
-      // Days with no clock data + Mon-Fri + not public holiday = unpaid leave
-      var unpaidDates = [];
-      // Parse Section 1 calendar to get weekday info
-      for (var si = 0; si < records.length; si++) {
-        var sec1 = records[si];
-        // Section 1 rows have Date at col 0 and Weekday at col 1
-        // Pattern: ["05.01", "FRI", IN, OUT, IN, OUT, IN, OUT, "05.17", "SUN", ...]
-        if (sec1.length >= 16 && /^\d{2}\.\d{2}$/.test(sec1[0]) && /^(MON|TUE|WED|THU|FRI|SAT|SUN)$/i.test(sec1[1])) {
-          // First week (cols 0-7)
-          var date1 = sec1[0];
-          var wday1 = (sec1[1] || '').toUpperCase();
-          var hasData1 = sec1[2] || sec1[3] || sec1[4] || sec1[5] || sec1[6] || sec1[7];
-          // Second week (cols 8-15)
-          var date2 = sec1[8];
-          var wday2 = (sec1[9] || '').toUpperCase();
-          var hasData2 = sec1[10] || sec1[11] || sec1[12] || sec1[13] || sec1[14] || sec1[15];
-
-          // Check date 1
-          if (date1 && !hasData1 && wday1 !== 'SUN' && !hs[date1]) {
-            // Convert MM.DD to YYYY-MM-DD format for flatpickr
-            var parts1 = date1.split('.');
-            // Use current year if period is set, otherwise auto-detect
-            var yr1 = periodYear || '2026';
-            unpaidDates.push(yr1 + '-' + parts1[0] + '-' + parts1[1]);
-          }
-          // Check date 2
-          if (date2 && !hasData2 && wday2 !== 'SUN' && !hs[date2]) {
-            var parts2 = date2.split('.');
-            var yr2 = periodYear || '2026';
-            unpaidDates.push(yr2 + '-' + parts2[0] + '-' + parts2[1]);
-          }
-        }
-      }
-
-      // Deduplicate and sort
-      unpaidDates = unpaidDates.filter(function(v, i, a) { return a.indexOf(v) === i; }).sort();
-
-      if (unpaidDates.length > 0 && fpUnpaid) {
-        fpUnpaid.setDate(unpaidDates);
-        document.getElementById('unpaidCount').textContent = unpaidDates.length;
-        document.getElementById('unpaidDays').value = unpaidDates.length;
-        document.getElementById('calBadge').textContent = unpaidDates.length + ' 天无薪假';
-      }
-
-      onInputChange();
-
       // Show OT pay based on Basic Salary
       var basic = parseFloat(document.getElementById('basicSalary').value) || 0;
       if (basic > 0) {
