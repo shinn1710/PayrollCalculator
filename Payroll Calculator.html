@@ -2490,7 +2490,6 @@ function clearAll(){
   document.getElementById('unpaidCount').textContent = '0';
   document.getElementById('calBadge').textContent = '0 天无薪假';
   localStorage.removeItem(LS_KEY);
-  localStorage.removeItem(EMP_DB_KEY);
   // Reset OT display
   var otD = document.getElementById('otDisplay');
   if (otD) otD.textContent = '';
