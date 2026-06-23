@@ -1752,10 +1752,20 @@ function importAttendanceXLS(input) {
               matchedEmp = { row: i, name: xlsName };
             }
           }
-          // Extract year from Date field: "Date:26.05.01~26.05.31"
+          // Extract year and period from Date field: "Date:26.05.01~26.05.31"
           if (cellText.indexOf('Date:') >= 0) {
-            var yrMatch = cellText.match(/Date:(\d{2})\./);
-            if (yrMatch) periodYear = '20' + yrMatch[1];
+            var yrMatch = cellText.match(/Date:(\d{2})\.(\d{2})\.(\d{2})~(\d{2})\.(\d{2})\.(\d{2})/);
+            if (yrMatch) {
+              periodYear = '20' + yrMatch[1];
+              // Auto-set work period from XLS
+              var ps = periodYear + '-' + yrMatch[2] + '-' + yrMatch[3];
+              var pe = periodYear + '-' + yrMatch[5] + '-' + yrMatch[6];
+              if (fpPeriod) {
+                fpPeriod.setDate([new Date(ps), new Date(pe)]);
+                var days = Math.round((new Date(pe) - new Date(ps)) / 86400000) + 1;
+                document.getElementById('periodDays').textContent = days;
+              }
+            }
           }
         }
         if (matchedEmp) break;
